@@ -64,14 +64,14 @@ if errors:
 else:
     # Calculate initial reaction time
     reaction_time = calculate_reaction_time(speed, distance)
-    
+
     # Generate distance range and calculate equivalent speeds
     distances = generate_distance_range()
     equiv_speeds = calculate_equivalent_speeds(reaction_time, distances)
-    
+
     # Create interactive chart
     fig = go.Figure()
-    
+
     # Add equivalent speed line
     fig.add_trace(
         go.Scatter(
@@ -82,7 +82,7 @@ else:
             line=dict(color='#1f77b4', width=3)
         )
     )
-    
+
     # Add point for initial input
     fig.add_trace(
         go.Scatter(
@@ -97,7 +97,37 @@ else:
             )
         )
     )
-    
+
+    # Add reference distances
+    common_distances = [46, 50, 60.6]
+    common_distance_names = ["46ft (Indoor)", "50ft (Youth)", "60.6ft (MLB)"]
+
+    for dist, name in zip(common_distances, common_distance_names):
+        # Calculate equivalent speed at this distance
+        equiv_speed = calculate_equivalent_speeds(reaction_time, np.array([dist]))[0]
+
+        # Add vertical line
+        fig.add_vline(
+            x=dist,
+            line_dash="dot",
+            line_color="gray",
+            opacity=0.5
+        )
+
+        # Add point and label
+        fig.add_trace(
+            go.Scatter(
+                x=[dist],
+                y=[equiv_speed],
+                mode='markers+text',
+                name=name,
+                text=[f"{equiv_speed:.1f} mph"],
+                textposition="top center",
+                marker=dict(size=8),
+                showlegend=True
+            )
+        )
+
     # Customize layout
     fig.update_layout(
         title=dict(
@@ -117,7 +147,7 @@ else:
         ),
         margin=dict(l=50, r=50, t=80, b=50)
     )
-    
+
     # Configure axes
     fig.update_xaxes(
         range=[15, 61],
@@ -127,13 +157,13 @@ else:
     fig.update_yaxes(
         gridcolor='lightgray'
     )
-    
+
     # Display chart
     st.plotly_chart(fig, use_container_width=True)
-    
+
     # Display reaction time
     st.info(f"⏱️ Reaction Time: {reaction_time:.3f} seconds")
-    
+
     # Additional information
     with st.expander("How to interpret this chart"):
         st.markdown("""
@@ -141,4 +171,8 @@ else:
             - The red star shows your initial input point
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
+            - Vertical lines mark common distances:
+              - 60.6ft: Major League Baseball (MLB)
+              - 50ft: Youth Baseball
+              - 46ft: Indoor Training
         """)
