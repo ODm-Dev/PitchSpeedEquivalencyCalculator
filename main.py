@@ -88,48 +88,58 @@ else:
         go.Scatter(
             x=[distance],
             y=[speed],
-            mode='markers',
-            name='Initial Point',
+            mode='markers+text',
+            name='Your Input',
+            text=[f"{speed} mph"],
+            textposition="top center",
             marker=dict(
-                color='red',
-                size=12,
-                symbol='circle-open-dot'
+                color='#ff4b4b',
+                size=15,
+                symbol='star',
+                line=dict(
+                    color='black',
+                    width=2
+                )
             )
+    
         )
+    
     )
 
     # Add reference distances
-    common_distances = [46, 50, 60.6]
-    common_distance_names = ["46ft (Indoor)", "50ft (Youth)", "60.6ft (MLB)"]
-
+    common_distances = [20, 30, 46, 50, 60.5]
+    common_distance_names = ["20ft BP", "30ft BP","46ft (10U)", "50ft (12U)", "60.5ft (MLB)"]     
+    
     for dist, name in zip(common_distances, common_distance_names):
         # Calculate equivalent speed at this distance
         equiv_speed = calculate_equivalent_speeds(reaction_time, np.array([dist]))[0]
 
-        # Add vertical line
-        fig.add_vline(
-            x=dist,
-            line_dash="dot",
-            line_color="gray",
-            opacity=0.5
-        )
-
-        # Add point and label
-        fig.add_trace(
-            go.Scatter(
-                x=[dist],
-                y=[equiv_speed],
-                mode='markers+text',
-                name=name,
-                text=[f"{equiv_speed:.1f} mph"],
-                textposition="top center",
-                marker=dict(
-                    size=8,
-                    symbol='circle'
-                ),
-                showlegend=True
+        # Only add reference line if dist does not equal input distance
+        if dist != distance:  
+            # Add vertical line
+            fig.add_vline(
+                x=dist,
+                line_dash="dot",
+                line_color="gray",
+                opacity=0.5
             )
-        )
+    
+            # Add point and label
+            fig.add_trace(
+                go.Scatter(
+                    x=[dist],
+                    y=[equiv_speed],
+                    mode='markers+text',
+                    name=name,
+                    text=[f"{equiv_speed:.1f} mph"],
+                    textposition="top center",
+                    marker=dict(
+                        size=8,
+                        symbol='circle'
+                    ),
+                    showlegend=True
+                )
+            )
 
     # Customize layout
     fig.update_layout(
@@ -151,6 +161,15 @@ else:
         margin=dict(l=50, r=50, t=80, b=50)
     )
 
+    # Add vertical line for input distance
+    fig.add_vline(
+        x=distance,
+        line_dash="dot",
+        line_color="red",
+        opacity=0.5
+
+    )
+    
     # Configure axes
     fig.update_xaxes(
         range=[15, 62],
@@ -175,7 +194,9 @@ else:
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
             - Vertical lines mark common distances:
-              - 60.6ft: Major League Baseball (MLB)
-              - 50ft: Youth Baseball
-              - 46ft: Indoor Baseball
+              - 60.5ft: Major League Baseball (MLB)
+              - 50ft: 12U Baseball
+              - 46ft: 10U Baseball
+              - 30ft: BP
+              - 20ft: BP
         """)
