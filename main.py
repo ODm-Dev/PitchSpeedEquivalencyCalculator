@@ -88,19 +88,25 @@ else:
         go.Scatter(
             x=[distance],
             y=[speed],
-            mode='markers',
-            name='Initial Point',
+            mode='markers+text',
+            name='Your Input',
+            text=[f"{speed} mph"],
+            textposition="top center",
             marker=dict(
-                color='red',
-                size=12,
-                symbol='circle-open-dot'
+                color='#ff4b4b',
+                size=15,
+                symbol='star',
+                line=dict(
+                    color='black',
+                    width=2
+                )
             )
         )
     )
 
     # Add reference distances
-    common_distances = [20, 30, 46, 50, 60.5]
-    common_distance_names = ["20ft BP", "30ft BP","46ft (10U)", "50ft (12U)", "60.5ft (MLB)"]
+    common_distances = [46, 50, 60.6]
+    common_distance_names = ["46ft (Indoor)", "50ft (Youth)", "60.6ft (MLB)"]
 
     for dist, name in zip(common_distances, common_distance_names):
         # Calculate equivalent speed at this distance
@@ -123,7 +129,10 @@ else:
                 name=name,
                 text=[f"{equiv_speed:.1f} mph"],
                 textposition="top center",
-                marker=dict(size=8),
+                marker=dict(
+                    size=8,
+                    symbol='circle'
+                ),
                 showlegend=True
             )
         )
@@ -172,9 +181,7 @@ else:
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
             - Vertical lines mark common distances:
-              - 60.5ft: Major League Baseball (MLB)
-              - 50ft: 12U Baseball
-              - 46ft: 10U Baseball
-              - 30ft: BP
-              - 20ft: BP
+              - 60.6ft: Major League Baseball (MLB)
+              - 50ft: Youth Baseball
+              - 46ft: Indoor Baseball
         """)
