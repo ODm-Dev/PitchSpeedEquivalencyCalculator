@@ -93,14 +93,14 @@ else:
             marker=dict(
                 color='red',
                 size=12,
-                symbol='star'
+                symbol='circle-open-dot'
             )
         )
     )
 
     # Add reference distances
-    common_distances = [46, 50, 60.6]
-    common_distance_names = ["46ft (Indoor)", "50ft (Youth)", "60.6ft (MLB)"]
+    common_distances = [20, 30, 46, 50, 60.5]
+    common_distance_names = ["20ft BP", "30ft BP","46ft (10U)", "50ft (12U)", "60.5ft (MLB)"]
 
     for dist, name in zip(common_distances, common_distance_names):
         # Calculate equivalent speed at this distance
@@ -150,7 +150,7 @@ else:
 
     # Configure axes
     fig.update_xaxes(
-        range=[15, 61],
+        range=[15, 62],
         dtick=5,
         gridcolor='lightgray'
     )
@@ -172,7 +172,9 @@ else:
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
             - Vertical lines mark common distances:
-              - 60.6ft: Major League Baseball (MLB)
-              - 50ft: Youth Baseball
-              - 46ft: Indoor Training
+              - 60.5ft: Major League Baseball (MLB)
+              - 50ft: 12U Baseball
+              - 46ft: 10U Baseball
+              - 30ft: BP
+              - 20ft: BP
         """)
