@@ -88,18 +88,12 @@ else:
         go.Scatter(
             x=[distance],
             y=[speed],
-            mode='markers+text',
-            name='Your Input',
-            text=[f"{speed} mph"],
-            textposition="top center",
+            mode='markers',
+            name='Initial Point',
             marker=dict(
-                color='#ff4b4b',
-                size=15,
-                symbol='star',
-                line=dict(
-                    color='black',
-                    width=2
-                )
+                color='red',
+                size=12,
+                symbol='circle-open-dot'
             )
         )
     )
@@ -177,7 +171,7 @@ else:
     with st.expander("How to interpret this chart"):
         st.markdown("""
             - The blue line shows equivalent speeds at different distances that give the same reaction time
-            - The red star shows your initial input point
+            - The red dot shows your initial input point
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
             - Vertical lines mark common distances:
