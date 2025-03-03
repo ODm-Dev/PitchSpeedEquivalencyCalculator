@@ -69,9 +69,6 @@ else:
     distances = generate_distance_range()
     equiv_speeds = calculate_equivalent_speeds(reaction_time, distances)
     
-    # Round speeds to whole numbers
-    equiv_speeds = np.round(equiv_speeds)
-    
     # Create interactive chart
     fig = go.Figure()
     
@@ -143,6 +140,5 @@ else:
             - The blue line shows equivalent speeds at different distances that give the same reaction time
             - The red star shows your initial input point
             - Hover over the line to see exact values
-            - All speeds are rounded to whole numbers
             - Distance increments are in 0.5 feet
         """)
