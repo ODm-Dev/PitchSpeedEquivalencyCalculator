@@ -37,23 +37,23 @@ st.markdown("""
 # Input form
 col1, col2 = st.columns(2)
 with col1:
-    speed = st.number_input(
-        "Enter pitch speed (mph)",
+    speed = st.slider(
+        "Pitch speed (mph)",
         min_value=1,
-        max_value=200,
+        max_value=110,
         value=90,
         step=1,
-        help="Enter the initial pitch speed in miles per hour"
+        help="Pitch speed in miles per hour"
     )
 
 with col2:
-    distance = st.number_input(
-        "Enter distance (ft)",
-        min_value=15.0,
+    distance = st.slider(
+        "Distance (ft)",
+        min_value=10.0,
         max_value=60.5,
         value=60.5,
         step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)"
+        help="Enter the distance from pitcher to batter (10-60.5 feet)"
     )
 
 # Validate inputs
@@ -151,12 +151,13 @@ else:
         xaxis_title="Distance (feet)",
         yaxis_title="Speed (mph)",
         hovermode='x unified',
-        showlegend=True,
+        showlegend=False,
         legend=dict(
-            yanchor="top",
-            y=0.99,
-            xanchor="left",
-            x=0.01
+            yanchor="bottom",
+            orientation="h",
+            y=-0.30,
+            xanchor="center",
+            x=0.5
         ),
         margin=dict(l=50, r=50, t=80, b=50)
     )
@@ -172,7 +173,7 @@ else:
     
     # Configure axes
     fig.update_xaxes(
-        range=[15, 62],
+        range=[10, 62],
         dtick=5,
         gridcolor='lightgray'
     )
