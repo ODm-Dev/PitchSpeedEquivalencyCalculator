@@ -49,11 +49,11 @@ with col1:
 with col2:
     distance = st.slider(
         "Distance (ft)",
-        min_value=10.0,
+        min_value=15.0,
         max_value=60.5,
         value=60.5,
         step=0.5,
-        help="Enter the distance from pitcher to batter (10-60.5 feet)"
+        help="Enter the distance from pitcher to batter (15-60.5 feet)"
     )
 
 # Validate inputs
@@ -173,7 +173,7 @@ else:
     
     # Configure axes
     fig.update_xaxes(
-        range=[10, 62],
+        range=[15, 62],
         dtick=5,
         gridcolor='lightgray'
     )
