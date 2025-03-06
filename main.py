@@ -78,7 +78,7 @@ else:
             x=distances,
             y=equiv_speeds,
             mode='lines',
-            name='Equivalent Speeds',
+            name='Eqv. MPH',
             line=dict(color='#1f77b4', width=3)
         )
     )
@@ -107,7 +107,7 @@ else:
     )
 
     # Add reference distances
-    common_distances = [20, 30, 46, 50, 60.5]
+    common_distances = [20, 30, 43, 46, 55]
     common_distance_names = ["20ft BP", "30ft BP","46ft (10U)", "50ft (12U)", "60.5ft (MLB)"]     
     
     for dist, name in zip(common_distances, common_distance_names):
@@ -116,12 +116,13 @@ else:
 
         # Only add reference line if dist does not equal input distance
         if dist != distance:  
-            # Add vertical line
+            # Add vertical line with label
             fig.add_vline(
                 x=dist,
                 line_dash="dot",
                 line_color="gray",
-                opacity=0.5
+                opacity=0.5,
+                annotation_text=f"{name}"
             )
     
             # Add point and label
@@ -148,7 +149,7 @@ else:
             x=0.5,
             xanchor='center'
         ),
-        xaxis_title="Distance (feet)",
+        xaxis_title="Release Distance (feet)",
         yaxis_title="Speed (mph)",
         hovermode='x unified',
         showlegend=False,
@@ -194,10 +195,11 @@ else:
             - The red dot shows your initial input point
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
-            - Vertical lines mark common distances:
-              - 60.5ft: Major League Baseball (MLB)
-              - 50ft: 12U Baseball
-              - 46ft: 10U Baseball
+            - Vertical lines mark common distances from release:
+              - 60.5ft: Major League Baseball (MLB), released at 55ft*
+              - 50ft: 12U Baseball, released at 46ft
+              - 46ft: 10U Baseball, released at 43ft
               - 30ft: BP
               - 20ft: BP
+            - * FanGraphs Release Point: https://community.fangraphs.com/estimating-pitcher-release-point-distance-from-pitchfx-data/
         """)
