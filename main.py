@@ -122,7 +122,7 @@ else:
                 line_dash="dot",
                 line_color="gray",
                 opacity=0.5,
-                annotation_text=f"{name}"
+                # annotation_text=f"{name}"
             )
     
             # Add point and label
