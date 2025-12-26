@@ -11,8 +11,13 @@ from utils import (
 # Page configuration
 st.set_page_config(
     page_title="Pitch Speed Equivalency Calculator",
-    layout="wide"
+    layout="wide"    
 )
+
+# Search Engine Optimization
+st.header = "Pitch Speed Equivalency Calculator"
+st.text = "Calculate the equivalent pitch speeds for a given pitch speed and distance range."
+
 
 # Custom CSS
 st.markdown("""
