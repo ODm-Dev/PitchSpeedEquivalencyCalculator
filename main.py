@@ -1,23 +1,16 @@
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
-from utils import (
-    calculate_reaction_time,
-    calculate_equivalent_speeds,
-    generate_distance_range,
-    validate_inputs
-)
+from utils import (calculate_reaction_time, calculate_equivalent_speeds,
+                   generate_distance_range, validate_inputs)
 
 # Page configuration
-st.set_page_config(
-    page_title="Pitch Speed Equivalency Calculator",
-    layout="wide"    
-)
+st.set_page_config(page_title="Pitch Speed Equivalency Calculator",
+                   layout="wide")
 
 # Search Engine Optimization
 st.header = "Pitch Speed Equivalency Calculator"
 st.text = "Calculate the equivalent pitch speeds for a given pitch speed and distance range."
-
 
 # Custom CSS
 st.markdown("""
@@ -30,10 +23,11 @@ st.markdown("""
         font-size: 1.2rem;
     }
     </style>
-""", unsafe_allow_html=True)
+""",
+            unsafe_allow_html=True)
 
 # Title and description
-st.title("⚾ Pitch Speed Equivalency Calculator")
+st.title("⚾ Pitch Velo Equivalency Calculator")
 st.markdown("""
     Calculate equivalent pitch speeds at different distances that produce the same reaction time.
     Enter your initial speed and distance below to see the equivalency chart.
@@ -55,13 +49,15 @@ presets = {
 }
 
 # Preset selector
-preset_options = ["Custom"] + [f"{label} ({speed} mph @ {dist} ft)" for label, (speed, dist) in presets.items()]
+preset_options = ["Custom"] + [
+    f"{label} ({speed} mph @ {dist} ft)"
+    for label, (speed, dist) in presets.items()
+]
 preset_selection = st.selectbox(
     "Select Preset",
     options=preset_options,
     index=0,
-    help="Select a common age group preset or use Custom"
-)
+    help="Select a common age group preset or use Custom")
 
 if preset_selection != "Custom":
     label = preset_selection.split(" (")[0]
@@ -70,25 +66,22 @@ if preset_selection != "Custom":
 # Input form
 col1, col2 = st.columns(2)
 with col1:
-    speed = st.slider(
-        "Pitch speed (mph)",
-        min_value=1,
-        max_value=110,
-        value=st.session_state.speed,
-        step=1,
-        help="Pitch speed in miles per hour"
-    )
+    speed = st.slider("Pitch Velo (mph)",
+                      min_value=1,
+                      max_value=110,
+                      value=st.session_state.speed,
+                      step=1,
+                      help="Pitch speed in miles per hour")
     st.session_state.speed = speed
 
 with col2:
     distance = st.slider(
-        "Distance (ft)",
+        "Release Distance (ft)",
         min_value=15.0,
         max_value=60.5,
         value=st.session_state.distance,
         step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)"
-    )
+        help="Enter the distance from pitcher to batter (15-60.5 feet)")
     st.session_state.distance = distance
 
 # Validate inputs
@@ -109,48 +102,38 @@ else:
 
     # Add equivalent speed line
     fig.add_trace(
-        go.Scatter(
-            x=distances,
-            y=equiv_speeds,
-            mode='lines',
-            name='Eqv. MPH',
-            line=dict(color='#1f77b4', width=3)
-        )
-    )
+        go.Scatter(x=distances,
+                   y=equiv_speeds,
+                   mode='lines',
+                   name='Eqv. MPH',
+                   line=dict(color='#1f77b4', width=3)))
 
     # Add point for initial input
     fig.add_trace(
-        go.Scatter(
-            x=[distance],
-            y=[speed],
-            mode='markers+text',
-            name='Your Input',
-            text=[f"{speed} mph"],
-            textposition="top center",
-            marker=dict(
-                color='#ff4b4b',
-                size=15,
-                symbol='star',
-                line=dict(
-                    color='black',
-                    width=2
-                )
-            )
-    
-        )
-    
-    )
+        go.Scatter(x=[distance],
+                   y=[speed],
+                   mode='markers+text',
+                   name='Your Input',
+                   text=[f"{speed} mph"],
+                   textposition="top center",
+                   marker=dict(color='#ff4b4b',
+                               size=15,
+                               symbol='star',
+                               line=dict(color='black', width=2))))
 
     # Add reference distances (matching presets)
     common_distances = [20, 42, 46, 54]
-    common_distance_names = ["BP (20ft)", "10U (42ft)", "12U (46ft)", "HS/Pro (54ft)"]     
-    
+    common_distance_names = [
+        "BP (20ft)", "10U (42ft)", "12U (46ft)", "HS/Pro (54ft)"
+    ]
+
     for dist, name in zip(common_distances, common_distance_names):
         # Calculate equivalent speed at this distance
-        equiv_speed = calculate_equivalent_speeds(reaction_time, np.array([dist]))[0]
+        equiv_speed = calculate_equivalent_speeds(reaction_time,
+                                                  np.array([dist]))[0]
 
         # Only add reference line if dist does not equal input distance
-        if dist != distance:  
+        if dist != distance:
             # Add vertical line with label
             fig.add_vline(
                 x=dist,
@@ -159,63 +142,40 @@ else:
                 opacity=0.5,
                 # annotation_text=f"{name}"
             )
-    
+
             # Add point and label
             fig.add_trace(
-                go.Scatter(
-                    x=[dist],
-                    y=[equiv_speed],
-                    mode='markers+text',
-                    name=name,
-                    text=[f"{equiv_speed:.1f} mph"],
-                    textposition="top center",
-                    marker=dict(
-                        size=8,
-                        symbol='circle'
-                    ),
-                    showlegend=True
-                )
-            )
+                go.Scatter(x=[dist],
+                           y=[equiv_speed],
+                           mode='markers+text',
+                           name=name,
+                           text=[f"{equiv_speed:.1f} mph"],
+                           textposition="top center",
+                           marker=dict(size=8, symbol='circle'),
+                           showlegend=True))
 
     # Customize layout
-    fig.update_layout(
-        title=dict(
-            text=f"Equivalent Speeds for {speed} mph at {distance} ft",
-            x=0.5,
-            xanchor='center'
-        ),
-        xaxis_title="Release Distance (feet)",
-        yaxis_title="Speed (mph)",
-        hovermode='x unified',
-        showlegend=False,
-        legend=dict(
-            yanchor="bottom",
-            orientation="h",
-            y=-0.30,
-            xanchor="center",
-            x=0.5
-        ),
-        margin=dict(l=50, r=50, t=80, b=50)
-    )
+    fig.update_layout(title=dict(
+        text=f"Equivalent Speeds for {speed} mph at {distance} ft",
+        x=0.5,
+        xanchor='center'),
+                      xaxis_title="Release Distance (feet)",
+                      yaxis_title="Speed (mph)",
+                      hovermode='x unified',
+                      showlegend=False,
+                      legend=dict(yanchor="bottom",
+                                  orientation="h",
+                                  y=-0.30,
+                                  xanchor="center",
+                                  x=0.5),
+                      margin=dict(l=50, r=50, t=80, b=50))
 
     # Add vertical line for input distance
-    fig.add_vline(
-        x=distance,
-        line_dash="dot",
-        line_color="red",
-        opacity=0.5
+    fig.add_vline(x=distance, line_dash="dot", line_color="red", opacity=0.5)
 
-    )
-    
     # Configure axes
-    fig.update_xaxes(
-        range=[15, 62],
-        dtick=5,
-        gridcolor='lightgray'
-    )
-    fig.update_yaxes(
-        gridcolor='lightgray'
-    )
+    fig.update_xaxes(range=[15, 62], dtick=5, gridcolor='lightgray')
+    fig.update_yaxes(gridcolor='lightgray')
 
     # Display chart
     st.plotly_chart(fig, use_container_width=True)
