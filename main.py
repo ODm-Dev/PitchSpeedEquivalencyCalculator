@@ -38,6 +38,8 @@ if 'speed' not in st.session_state:
     st.session_state.speed = 60
 if 'distance' not in st.session_state:
     st.session_state.distance = 46.0
+if 'force_custom' not in st.session_state:
+    st.session_state.force_custom = False
 
 # Combined presets: (speed_mph, distance_ft)
 presets = {
@@ -61,6 +63,8 @@ def on_preset_change():
 
 # Check if current values match any preset
 def get_matching_preset_index():
+    if st.session_state.force_custom:
+        return 0
     for i, label in enumerate(preset_labels):
         preset_speed, preset_dist = presets[label]
         if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
@@ -75,6 +79,8 @@ preset_options = ["Custom"] + [
 ]
 
 current_index = get_matching_preset_index()
+if st.session_state.force_custom:
+    st.session_state.force_custom = False
 preset_selection = st.selectbox(
     "Select Preset",
     options=preset_options,
@@ -89,26 +95,28 @@ with col1:
     speed = st.slider("Pitch Velo (mph)",
                       min_value=20,
                       max_value=110,
-                      value=st.session_state.speed,
+                      value=int(st.session_state.speed),
                       step=1,
                       help="Pitch speed in miles per hour")
-    st.session_state.speed = speed
+    if speed != st.session_state.speed:
+        st.session_state.speed = speed
+        if get_matching_preset_index() == 0:
+            st.session_state.force_custom = True
+            st.rerun()
 
 with col2:
     distance = st.slider(
         "Release Distance (ft)",
         min_value=15.0,
         max_value=60.5,
-        value=st.session_state.distance,
+        value=float(st.session_state.distance),
         step=0.5,
         help="Enter the distance from pitcher to batter (15-60.5 feet)")
-    st.session_state.distance = distance
-
-# Reset dropdown to Custom if slider values don't match any preset
-if get_matching_preset_index() == 0 and st.session_state.get(
-        'preset_selector', 'Custom') != 'Custom':
-    st.session_state.preset_selector = 'Custom'
-    st.rerun()
+    if distance != st.session_state.distance:
+        st.session_state.distance = distance
+        if get_matching_preset_index() == 0:
+            st.session_state.force_custom = True
+            st.rerun()
 
 # Validate inputs
 errors = validate_inputs(speed, distance)
