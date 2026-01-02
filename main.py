@@ -67,12 +67,17 @@ distance_presets = {
 # Input form
 col1, col2 = st.columns(2)
 with col1:
-    st.markdown("**Pitch Speed (mph)**")
-    speed_cols = st.columns(len(speed_presets))
-    for i, (label, preset_speed) in enumerate(speed_presets.items()):
-        with speed_cols[i]:
-            if st.button(label, key=f"speed_{label}", use_container_width=True):
-                st.session_state.speed = preset_speed
+    speed_options = ["Custom"] + [f"{label} ({mph} mph)" for label, mph in speed_presets.items()]
+    speed_selection = st.selectbox(
+        "Pitch Speed Preset",
+        options=speed_options,
+        index=0,
+        help="Select a common pitch speed or use Custom"
+    )
+    
+    if speed_selection != "Custom":
+        label = speed_selection.split(" (")[0]
+        st.session_state.speed = speed_presets[label]
     
     speed = st.slider(
         "Pitch speed (mph)",
@@ -80,18 +85,22 @@ with col1:
         max_value=110,
         value=st.session_state.speed,
         step=1,
-        help="Pitch speed in miles per hour",
-        label_visibility="collapsed"
+        help="Pitch speed in miles per hour"
     )
     st.session_state.speed = speed
 
 with col2:
-    st.markdown("**Distance (ft)**")
-    dist_cols = st.columns(len(distance_presets))
-    for i, (label, preset_dist) in enumerate(distance_presets.items()):
-        with dist_cols[i]:
-            if st.button(label, key=f"dist_{label}", use_container_width=True):
-                st.session_state.distance = preset_dist
+    dist_options = ["Custom"] + [f"{label} ({ft} ft)" for label, ft in distance_presets.items()]
+    dist_selection = st.selectbox(
+        "Distance Preset",
+        options=dist_options,
+        index=0,
+        help="Select a common distance or use Custom"
+    )
+    
+    if dist_selection != "Custom":
+        label = dist_selection.split(" (")[0]
+        st.session_state.distance = distance_presets[label]
     
     distance = st.slider(
         "Distance (ft)",
@@ -99,8 +108,7 @@ with col2:
         max_value=60.5,
         value=st.session_state.distance,
         step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)",
-        label_visibility="collapsed"
+        help="Enter the distance from pitcher to batter (15-60.5 feet)"
     )
     st.session_state.distance = distance
 
