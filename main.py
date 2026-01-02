@@ -39,27 +39,70 @@ st.markdown("""
     Enter your initial speed and distance below to see the equivalency chart.
 """)
 
+# Initialize session state for speed and distance
+if 'speed' not in st.session_state:
+    st.session_state.speed = 90
+if 'distance' not in st.session_state:
+    st.session_state.distance = 60.5
+
+# Preset definitions
+speed_presets = {
+    "BP": 40,
+    "10U": 45,
+    "12U": 55,
+    "14U": 65,
+    "HS": 80,
+    "College": 90,
+    "MLB": 95
+}
+
+distance_presets = {
+    "BP": 18.0,
+    "10U": 42.0,
+    "12U": 46.0,
+    "HS": 55.0,
+    "Pro": 54.0
+}
+
 # Input form
 col1, col2 = st.columns(2)
 with col1:
+    st.markdown("**Pitch Speed (mph)**")
+    speed_cols = st.columns(len(speed_presets))
+    for i, (label, preset_speed) in enumerate(speed_presets.items()):
+        with speed_cols[i]:
+            if st.button(label, key=f"speed_{label}", use_container_width=True):
+                st.session_state.speed = preset_speed
+    
     speed = st.slider(
         "Pitch speed (mph)",
         min_value=1,
         max_value=110,
-        value=90,
+        value=st.session_state.speed,
         step=1,
-        help="Pitch speed in miles per hour"
+        help="Pitch speed in miles per hour",
+        label_visibility="collapsed"
     )
+    st.session_state.speed = speed
 
 with col2:
+    st.markdown("**Distance (ft)**")
+    dist_cols = st.columns(len(distance_presets))
+    for i, (label, preset_dist) in enumerate(distance_presets.items()):
+        with dist_cols[i]:
+            if st.button(label, key=f"dist_{label}", use_container_width=True):
+                st.session_state.distance = preset_dist
+    
     distance = st.slider(
         "Distance (ft)",
         min_value=15.0,
         max_value=60.5,
-        value=60.5,
+        value=st.session_state.distance,
         step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)"
+        help="Enter the distance from pitcher to batter (15-60.5 feet)",
+        label_visibility="collapsed"
     )
+    st.session_state.distance = distance
 
 # Validate inputs
 errors = validate_inputs(speed, distance)
