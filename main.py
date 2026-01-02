@@ -45,62 +45,49 @@ if 'speed' not in st.session_state:
 if 'distance' not in st.session_state:
     st.session_state.distance = 60.5
 
-# Preset definitions
-speed_presets = {
-    "BP": 40,
-    "10U": 45,
-    "12U": 55,
-    "14U": 65,
-    "HS": 80,
-    "College": 90,
-    "MLB": 95
+# Combined presets: (speed_mph, distance_ft)
+presets = {
+    "BP": (40, 20.0),
+    "10U": (50, 42.0),
+    "12U": (60, 46.0),
+    "HS": (80, 54.0),
+    "Pro": (95, 54.0)
 }
 
-distance_presets = {
-    "BP": 20.0,
-    "10U": 42.0,
-    "12U": 46.0,
-    "HS": 55.0,
-    "Pro": 54.0
-}
+# Preset selector
+preset_options = ["Custom"] + [f"{label} ({speed} mph @ {dist} ft)" for label, (speed, dist) in presets.items()]
+preset_selection = st.selectbox(
+    "Select Preset",
+    options=preset_options,
+    index=0,
+    help="Select a common age group preset or use Custom"
+)
+
+if preset_selection != "Custom":
+    label = preset_selection.split(" (")[0]
+    st.session_state.speed, st.session_state.distance = presets[label]
 
 # Input form
 col1, col2 = st.columns(2)
 with col1:
-    st.markdown("**Pitch Speed (mph)**")
-    speed_cols = st.columns(len(speed_presets))
-    for i, (label, preset_speed) in enumerate(speed_presets.items()):
-        with speed_cols[i]:
-            if st.button(label, key=f"speed_{label}", use_container_width=True):
-                st.session_state.speed = preset_speed
-    
     speed = st.slider(
         "Pitch speed (mph)",
         min_value=1,
         max_value=110,
         value=st.session_state.speed,
         step=1,
-        help="Pitch speed in miles per hour",
-        label_visibility="collapsed"
+        help="Pitch speed in miles per hour"
     )
     st.session_state.speed = speed
 
 with col2:
-    st.markdown("**Distance (ft)**")
-    dist_cols = st.columns(len(distance_presets))
-    for i, (label, preset_dist) in enumerate(distance_presets.items()):
-        with dist_cols[i]:
-            if st.button(label, key=f"dist_{label}", use_container_width=True):
-                st.session_state.distance = preset_dist
-    
     distance = st.slider(
         "Distance (ft)",
         min_value=15.0,
         max_value=60.5,
         value=st.session_state.distance,
         step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)",
-        label_visibility="collapsed"
+        help="Enter the distance from pitcher to batter (15-60.5 feet)"
     )
     st.session_state.distance = distance
 
@@ -154,9 +141,9 @@ else:
     
     )
 
-    # Add reference distances
-    common_distances = [20, 30, 43, 46, 55]
-    common_distance_names = ["20ft BP", "30ft BP","46ft (10U)", "50ft (12U)", "60.5ft (MLB)"]     
+    # Add reference distances (matching presets)
+    common_distances = [20, 42, 46, 54]
+    common_distance_names = ["BP (20ft)", "10U (42ft)", "12U (46ft)", "HS/Pro (54ft)"]     
     
     for dist, name in zip(common_distances, common_distance_names):
         # Calculate equivalent speed at this distance
@@ -240,14 +227,12 @@ else:
     with st.expander("How to interpret this chart"):
         st.markdown("""
             - The blue line shows equivalent speeds at different distances that give the same reaction time
-            - The red dot shows your initial input point
+            - The red star shows your initial input point
             - Hover over the line to see exact values
             - Distance increments are in 0.5 feet
-            - Vertical lines mark common distances from release:
-              - 60.5ft: Major League Baseball (MLB), released at 55ft*
-              - 50ft: 12U Baseball, released at 46ft
-              - 46ft: 10U Baseball, released at 43ft
-              - 30ft: BP
-              - 20ft: BP
-            - * FanGraphs Release Point: https://community.fangraphs.com/estimating-pitcher-release-point-distance-from-pitchfx-data/
+            - Vertical lines mark common distances:
+              - 20ft: BP (Batting Practice)
+              - 42ft: 10U Baseball
+              - 46ft: 12U Baseball
+              - 54ft: HS (High School) / Pro
         """)
