@@ -38,6 +38,8 @@ if 'speed' not in st.session_state:
     st.session_state.speed = 90
 if 'distance' not in st.session_state:
     st.session_state.distance = 60.5
+if 'preset_index' not in st.session_state:
+    st.session_state.preset_index = 0
 
 # Combined presets: (speed_mph, distance_ft)
 presets = {
@@ -47,16 +49,27 @@ presets = {
     "HS": (80, 54.0),
     "Pro": (95, 54.0)
 }
+preset_labels = list(presets.keys())
+
+# Check if current values match any preset, otherwise set to Custom
+def get_matching_preset_index():
+    for i, label in enumerate(preset_labels):
+        preset_speed, preset_dist = presets[label]
+        if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
+            return i + 1
+    return 0
 
 # Preset selector
 preset_options = ["Custom"] + [
     f"{label} ({speed} mph @ {dist} ft)"
     for label, (speed, dist) in presets.items()
 ]
+
+current_index = get_matching_preset_index()
 preset_selection = st.selectbox(
     "Select Preset",
     options=preset_options,
-    index=0,
+    index=current_index,
     help="Select a common age group preset or use Custom")
 
 if preset_selection != "Custom":
