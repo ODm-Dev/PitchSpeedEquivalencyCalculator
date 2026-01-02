@@ -27,7 +27,7 @@ st.markdown("""
             unsafe_allow_html=True)
 
 # Title and description
-st.title("⚾ Pitch Velo Equivalency Calculator")
+st.title("⚾ Pitch Speed Equivalency Calculator")
 st.markdown("""
     Calculate equivalent pitch speeds at different distances that produce the same reaction time.
     Enter your initial speed and distance below to see the equivalency chart.
@@ -35,9 +35,9 @@ st.markdown("""
 
 # Initialize session state for speed and distance
 if 'speed' not in st.session_state:
-    st.session_state.speed = 90
+    st.session_state.speed = 60
 if 'distance' not in st.session_state:
-    st.session_state.distance = 60.5
+    st.session_state.distance = 46.0
 
 # Combined presets: (speed_mph, distance_ft)
 presets = {
@@ -49,6 +49,7 @@ presets = {
 }
 preset_labels = list(presets.keys())
 
+
 # Callback to apply preset when dropdown changes
 def on_preset_change():
     selection = st.session_state.preset_selector
@@ -57,6 +58,7 @@ def on_preset_change():
         if label in presets:
             st.session_state.speed, st.session_state.distance = presets[label]
 
+
 # Check if current values match any preset
 def get_matching_preset_index():
     for i, label in enumerate(preset_labels):
@@ -64,6 +66,7 @@ def get_matching_preset_index():
         if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
             return i + 1
     return 0
+
 
 # Preset selector
 preset_options = ["Custom"] + [
@@ -102,7 +105,8 @@ with col2:
     st.session_state.distance = distance
 
 # Reset dropdown to Custom if slider values don't match any preset
-if get_matching_preset_index() == 0 and st.session_state.get('preset_selector', 'Custom') != 'Custom':
+if get_matching_preset_index() == 0 and st.session_state.get(
+        'preset_selector', 'Custom') != 'Custom':
     st.session_state.preset_selector = 'Custom'
     st.rerun()
 
