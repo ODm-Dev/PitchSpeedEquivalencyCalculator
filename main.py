@@ -57,7 +57,7 @@ speed_presets = {
 }
 
 distance_presets = {
-    "BP": 18.0,
+    "BP": 20.0,
     "10U": 42.0,
     "12U": 46.0,
     "HS": 55.0,
