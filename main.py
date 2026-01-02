@@ -47,21 +47,38 @@ presets = {
     "HS": (80, 54.0),
     "Pro": (95, 54.0)
 }
+preset_labels = list(presets.keys())
+
+# Callback to apply preset when dropdown changes
+def on_preset_change():
+    selection = st.session_state.preset_selector
+    if selection != "Custom":
+        label = selection.split(" (")[0]
+        if label in presets:
+            st.session_state.speed, st.session_state.distance = presets[label]
+
+# Check if current values match any preset
+def get_matching_preset_index():
+    for i, label in enumerate(preset_labels):
+        preset_speed, preset_dist = presets[label]
+        if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
+            return i + 1
+    return 0
 
 # Preset selector
-preset_options = ["12U"] + [
+preset_options = ["Custom"] + [
     f"{label} ({speed} mph @ {dist} ft)"
     for label, (speed, dist) in presets.items()
 ]
+
+current_index = get_matching_preset_index()
 preset_selection = st.selectbox(
     "Select Preset",
     options=preset_options,
-    index=0,
+    index=current_index,
+    key="preset_selector",
+    on_change=on_preset_change,
     help="Select a common age group preset or use Custom")
-
-if preset_selection != "Custom":
-    label = preset_selection.split(" (")[0]
-    st.session_state.speed, st.session_state.distance = presets[label]
 
 # Input form
 col1, col2 = st.columns(2)
@@ -83,6 +100,11 @@ with col2:
         step=0.5,
         help="Enter the distance from pitcher to batter (15-60.5 feet)")
     st.session_state.distance = distance
+
+# Reset dropdown to Custom if slider values don't match any preset
+if get_matching_preset_index() == 0 and st.session_state.get('preset_selector', 'Custom') != 'Custom':
+    st.session_state.preset_selector = 'Custom'
+    st.rerun()
 
 # Validate inputs
 errors = validate_inputs(speed, distance)
