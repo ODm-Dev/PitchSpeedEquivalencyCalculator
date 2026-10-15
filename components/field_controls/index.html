@@ -10,21 +10,34 @@
       --primary: #ff4b4b;
       --secondary: #f0f2f6;
       --text: #31333f;
-      --muted: rgba(49, 51, 63, 0.6);
-      --bg: #ffffff;
+      --muted: rgba(49, 51, 63, 0.62);
+      --bg: transparent;
+      --control-border: transparent;
+      --focus-bg: #f0f2f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        color-scheme: dark;
+        --secondary: #262730;
+        --text: #fafafa;
+        --muted: rgba(250, 250, 250, 0.78);
+        --control-border: rgba(250, 250, 250, 0.55);
+        --focus-bg: #262730;
+      }
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
       padding: 0;
-      background: var(--bg);
+      background: transparent;
       color: var(--text);
       font-family: "Source Sans Pro", "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       font-size: 16px;
       line-height: 1.6;
     }
-    #root { overflow: hidden; }
-    .field { margin: 0 0 0.85rem; }
+    #root { overflow: hidden; background: transparent; }
+    .field { margin: 0 0 0.75rem; }
+    .inputs .field { margin-bottom: 0; }
     .field-label {
       margin: 0 0 0.15rem;
       font-size: 14px;
@@ -60,6 +73,7 @@
       border-radius: 999px;
       background: var(--secondary);
       color: var(--text);
+      box-shadow: 0 0 0 1px var(--control-border);
       font: inherit;
       font-size: 15px;
       line-height: 1.15;
@@ -102,6 +116,7 @@
       border-radius: 0.5rem;
       background: var(--secondary);
       color: var(--text);
+      box-shadow: 0 0 0 1px var(--control-border);
       font: inherit;
     }
     .step {
@@ -132,7 +147,7 @@
     .step-value:focus {
       outline: 2px solid var(--primary);
       outline-offset: 2px;
-      background: #ffffff;
+      background: var(--focus-bg);
     }
   </style>
 </head>
@@ -169,16 +184,77 @@
         && Math.abs(Number(a.distance) - Number(b.distance)) < 0.001;
     }
 
-    function applyTheme(theme) {
-      if (!theme) return;
-      const root = document.documentElement;
-      if (theme.primaryColor) root.style.setProperty("--primary", theme.primaryColor);
-      if (theme.secondaryBackgroundColor) root.style.setProperty("--secondary", theme.secondaryBackgroundColor);
-      if (theme.textColor) root.style.setProperty("--text", theme.textColor);
-      if (theme.backgroundColor) {
-        root.style.setProperty("--bg", theme.backgroundColor);
-        document.body.style.background = theme.backgroundColor;
+    function parseColor(color) {
+      if (!color) return null;
+      const text = String(color).trim();
+      if (text[0] === "#") {
+        let hex = text.slice(1);
+        if (hex.length === 3) hex = hex.split("").map(function (c) { return c + c; }).join("");
+        const value = parseInt(hex, 16);
+        if (!isFinite(value)) return null;
+        return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
       }
+      const match = text.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/);
+      if (!match) return null;
+      return { r: Number(match[1]), g: Number(match[2]), b: Number(match[3]) };
+    }
+
+    function isDarkColor(color) {
+      const rgb = parseColor(color);
+      if (!rgb) return false;
+      return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255 < 0.45;
+    }
+
+    function withAlpha(color, alpha) {
+      const rgb = parseColor(color);
+      if (!rgb) return color;
+      return "rgba(" + rgb.r + ", " + rgb.g + ", " + rgb.b + ", " + alpha + ")";
+    }
+
+    function systemPrefersDark() {
+      return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+
+    function readParentSurface() {
+      try {
+        const app = window.parent.document.querySelector(".stApp") || window.parent.document.body;
+        const style = getComputedStyle(app);
+        return { backgroundColor: style.backgroundColor, textColor: style.color };
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function applyTheme(theme) {
+      const root = document.documentElement;
+      const parent = readParentSurface();
+      const background = (theme && theme.backgroundColor) || (parent && parent.backgroundColor);
+      let dark = systemPrefersDark();
+      if (theme && theme.base === "dark") dark = true;
+      else if (theme && theme.base === "light") dark = false;
+      else if (background) dark = isDarkColor(background);
+
+      const text = (theme && theme.textColor) || (parent && parent.textColor) || (dark ? "#fafafa" : "#31333f");
+      const secondary = (theme && theme.secondaryBackgroundColor) || (dark ? "#262730" : "#f0f2f6");
+      const primary = (theme && theme.primaryColor) || "#ff4b4b";
+
+      root.dataset.theme = dark ? "dark" : "light";
+      root.style.colorScheme = dark ? "dark" : "light";
+      root.style.setProperty("--primary", primary);
+      root.style.setProperty("--secondary", secondary);
+      root.style.setProperty("--text", text);
+      root.style.setProperty("--muted", withAlpha(text, dark ? 0.78 : 0.62));
+      root.style.setProperty("--bg", "transparent");
+      root.style.setProperty("--focus-bg", secondary);
+      root.style.setProperty("--control-border", dark ? "rgba(250, 250, 250, 0.55)" : "transparent");
+      document.documentElement.style.background = "transparent";
+      document.body.style.background = "transparent";
+      try {
+        if (window.frameElement) {
+          window.frameElement.style.colorScheme = dark ? "dark" : "light";
+          window.frameElement.style.backgroundColor = "transparent";
+        }
+      } catch (err) { /* The frame can still follow the page without this. */ }
       try {
         const font = getComputedStyle(window.parent.document.body).fontFamily;
         if (font) document.body.style.fontFamily = font;
@@ -504,8 +580,8 @@
       if (event.target.closest("[data-step]")) event.preventDefault();
     }
 
-    function onRender(args) {
-      applyTheme(args.theme);
+    function onRender(args, theme) {
+      applyTheme(theme);
       cfg = args;
       const incoming = args.state;
       if (!incoming || incoming.speed == null || incoming.distance == null) return;
@@ -559,8 +635,15 @@
     window.addEventListener("message", function (event) {
       const data = event.data;
       if (!data || data.type !== "streamlit:render") return;
-      onRender(data.args || {});
+      onRender(data.args || {}, data.theme);
     });
+    applyTheme(null);
+    if (window.matchMedia) {
+      const scheme = window.matchMedia("(prefers-color-scheme: dark)");
+      const onScheme = function () { if (!cfg) applyTheme(null); };
+      if (scheme.addEventListener) scheme.addEventListener("change", onScheme);
+      else if (scheme.addListener) scheme.addListener(onScheme);
+    }
     post("streamlit:componentReady", { apiVersion: 1 });
   </script>
 </body>

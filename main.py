@@ -26,12 +26,16 @@ st.markdown(
     <style>
     .stApp { max-width: 1200px; margin: 0 auto; }
     [data-testid="stMainBlockContainer"] { overflow-x: clip; }
-    iframe { max-width: 100%; }
+    iframe {
+      max-width: 100%;
+      background-color: transparent !important;
+      color-scheme: light dark !important;
+    }
     [data-testid="stMarkdownContainer"] .readout {
       margin: 0.15rem 0 0.35rem;
       font-size: 1.05rem;
       line-height: 1.45;
-      color: #31333F;
+      color: inherit;
     }
     [data-testid="stMarkdownContainer"] .readout strong {
       font-weight: 600;
