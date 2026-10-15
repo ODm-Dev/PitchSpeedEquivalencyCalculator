@@ -24,16 +24,9 @@
       line-height: 1.6;
     }
     #root { overflow: hidden; }
-    .field { margin: 0 0 0.4rem; }
-    .label-line {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      min-width: 0;
-    }
+    .field { margin: 0 0 0.85rem; }
     .field-label {
-      margin: 0;
+      margin: 0 0 0.15rem;
       font-size: 14px;
       font-weight: 400;
       line-height: 1.6;
@@ -55,21 +48,21 @@
       overscroll-behavior-x: contain;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      padding: 1px max(12px, calc(50% - 72px)) 3px;
+      padding: 2px max(12px, calc(50% - 88px)) 4px;
     }
     .scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
     .pill {
       flex: 0 0 auto;
       scroll-snap-align: center;
       min-height: 44px;
-      padding: 0 14px;
+      padding: 4px 14px;
       border: none;
       border-radius: 999px;
       background: var(--secondary);
       color: var(--text);
       font: inherit;
       font-size: 15px;
-      line-height: 1;
+      line-height: 1.15;
       white-space: nowrap;
       cursor: pointer;
       user-select: none;
@@ -90,61 +83,71 @@
     .pill[aria-checked="true"] .pill-meta { color: rgba(255, 255, 255, 0.92); }
     .pill:focus { outline: none; }
     .pill:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-    .nudges {
+    .inputs {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.15rem 1.25rem;
+    }
+    @media (min-width: 720px) {
+      .inputs { grid-template-columns: 1fr 1fr; }
+    }
+    .stepper {
       display: flex;
-      align-items: center;
-      flex: 0 0 auto;
+      align-items: stretch;
+      gap: 8px;
     }
-    .nudge {
-      min-width: 44px;
-      min-height: 44px;
-      padding: 0;
-      border: none;
-      border-radius: 999px;
-      background: transparent;
-      color: var(--muted);
-      font: inherit;
-      font-size: 1.15rem;
-      line-height: 1;
-      cursor: pointer;
-    }
-    .nudge:hover, .nudge:focus-visible { background: var(--secondary); color: var(--text); }
-    .nudge:focus { outline: none; }
-    .nudge:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
-    .nudge:disabled { opacity: 0.35; cursor: default; background: transparent; }
-    .nudge-value {
-      min-width: 4.6rem;
-      text-align: center;
-      font-size: 14px;
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-    }
-    .custom-nudges { margin: -0.15rem 0 0.15rem; }
-    .swap-wrap { margin: 0 0 0.4rem; }
-    .swap {
-      min-height: 44px;
-      padding: 0.25rem 0.85rem;
+    .step, .step-value {
+      min-height: 48px;
       border: none;
       border-radius: 0.5rem;
       background: var(--secondary);
       color: var(--text);
       font: inherit;
-      font-size: 14px;
-      cursor: pointer;
     }
-    .swap:focus { outline: none; }
-    .swap:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .step {
+      flex: 0 0 64px;
+      min-width: 64px;
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .step:focus { outline: none; }
+    .step:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .step:disabled { opacity: 0.35; cursor: default; }
+    .step-value {
+      flex: 1 1 auto;
+      min-width: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 1.35rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      padding: 0 8px;
+    }
+    .step-value:focus {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+      background: #ffffff;
+    }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script>
-    const SPOKEN_LEVEL = { HS: "High school", College: "College", MLB: "MLB" };
+    const HOLD_MS = 400;
     let cfg = null;
     let current = null;
     let booted = false;
     let scrollBehavior = "auto";
     let gesture = null;
+    let hold = null;
+    let editing = false;
+    let dirty = false;
 
     function post(type, extra) {
       window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra), "*");
@@ -163,10 +166,7 @@
     function sameState(a, b) {
       if (!a || !b) return false;
       return Number(a.speed) === Number(b.speed)
-        && a.from_preset === b.from_preset
-        && a.to_preset === b.to_preset
-        && Math.abs(Number(a.from_feet) - Number(b.from_feet)) < 0.001
-        && Math.abs(Number(a.to_feet) - Number(b.to_feet)) < 0.001;
+        && Math.abs(Number(a.distance) - Number(b.distance)) < 0.001;
     }
 
     function applyTheme(theme) {
@@ -190,7 +190,7 @@
         const raw = localStorage.getItem(cfg.storage_key);
         if (!raw) return null;
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed !== "object" || parsed.speed == null) return null;
+        if (!parsed || typeof parsed !== "object" || parsed.speed == null || parsed.distance == null) return null;
         return parsed;
       } catch (err) { return null; }
     }
@@ -204,11 +204,20 @@
       post("streamlit:setComponentValue", { value: state, dataType: "json" });
     }
 
-    function snap(feet) {
+    function snapSpeed(value) {
+      const min = Number(cfg.speed_min);
+      const max = Number(cfg.speed_max);
+      let snapped = Math.floor(Number(value) + 0.5 + 1e-8);
+      if (!isFinite(snapped)) snapped = min;
+      return Math.min(max, Math.max(min, snapped));
+    }
+
+    function snapDist(feet) {
       const min = Number(cfg.distance_min);
       const max = Number(cfg.distance_max);
       const step = Number(cfg.distance_step);
       let x = Math.min(max, Math.max(min, Number(feet)));
+      if (!isFinite(x)) x = min;
       const steps = Math.floor((x - min) / step + 0.5 + 1e-8);
       let snapped = min + steps * step;
       if (snapped > max) snapped = max;
@@ -216,21 +225,27 @@
       return Math.round(snapped * 1000) / 1000;
     }
 
-    function feetShort(feet) {
-      feet = Number(feet);
-      if (Math.abs(feet - 60.5) < 1e-6) return "60'6\"";
-      if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " ft";
-      return feet.toFixed(1) + " ft";
+    function formatSpeed(speed) { return String(snapSpeed(speed)); }
+
+    function formatDist(feet) {
+      feet = snapDist(feet);
+      if (Math.abs(feet - Math.round(feet)) < 1e-6) return String(Math.round(feet));
+      return feet.toFixed(1);
     }
 
     function feetSpoken(feet) {
       feet = Number(feet);
-      if (Math.abs(feet - 60.5) < 1e-6) return "60 feet 6 inches";
       if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " feet";
       return feet.toFixed(1) + " feet";
     }
 
-    function levelSpoken(id) { return SPOKEN_LEVEL[id] || id; }
+    function matchingPreset() {
+      if (!cfg || !current) return null;
+      return (cfg.presets || []).find(function (preset) {
+        return Number(preset.speed) === Number(current.speed)
+          && Math.abs(Number(preset.distance) - Number(current.distance)) < 0.001;
+      }) || null;
+    }
 
     function fit() {
       const root = document.getElementById("root");
@@ -245,155 +260,178 @@
     }
 
     function centerSelected(behavior) {
-      document.querySelectorAll(".scroller").forEach(function (scroller) {
-        let target = scroller.querySelector('[aria-checked="true"]');
-        if (!target && scroller.dataset.row === "speed") {
-          const speed = Number(current.speed);
-          let best = null;
-          let bestDiff = Infinity;
-          scroller.querySelectorAll("[data-speed]").forEach(function (el) {
-            const diff = Math.abs(Number(el.dataset.speed) - speed);
-            if (diff < bestDiff) { best = el; bestDiff = diff; }
-          });
-          target = best;
-        }
-        centerInScroller(scroller, target, behavior);
+      const scroller = document.querySelector(".scroller");
+      if (!scroller) return;
+      centerInScroller(scroller, scroller.querySelector('[aria-checked="true"]'), behavior);
+    }
+
+    function flush() {
+      if (!dirty || !current) return;
+      dirty = false;
+      current.rev = (Number(current.rev) || 0) + 1;
+      writeStorage(current);
+      send(current);
+    }
+
+    function syncControls() {
+      const speedInput = document.querySelector("[data-field=speed]");
+      const distInput = document.querySelector("[data-field=distance]");
+      if (speedInput && document.activeElement !== speedInput) speedInput.value = formatSpeed(current.speed);
+      if (distInput && document.activeElement !== distInput) distInput.value = formatDist(current.distance);
+      const match = matchingPreset();
+      document.querySelectorAll("[data-preset]").forEach(function (pill) {
+        const on = match && pill.dataset.preset === match.id;
+        pill.setAttribute("aria-checked", on ? "true" : "false");
+        pill.tabIndex = on ? 0 : -1;
       });
+      if (!hold) {
+        const speed = Number(current.speed);
+        const distance = Number(current.distance);
+        const speedDown = document.querySelector("[data-step=speed-down]");
+        const speedUp = document.querySelector("[data-step=speed-up]");
+        const distDown = document.querySelector("[data-step=distance-down]");
+        const distUp = document.querySelector("[data-step=distance-up]");
+        if (speedDown) speedDown.disabled = speed <= Number(cfg.speed_min);
+        if (speedUp) speedUp.disabled = speed >= Number(cfg.speed_max);
+        if (distDown) distDown.disabled = distance <= Number(cfg.distance_min) + 1e-6;
+        if (distUp) distUp.disabled = distance >= Number(cfg.distance_max) - 1e-6;
+      }
     }
 
-    function pill(attrs, name, meta, checked) {
-      const tab = checked ? "0" : "-1";
-      return '<button type="button" class="pill" role="radio" aria-checked="' + (checked ? "true" : "false") + '" tabindex="' + tab + '"' + attrs + '>'
-        + '<span class="pill-name">' + esc(name) + '</span>'
-        + (meta ? '<span class="pill-meta">' + esc(meta) + '</span>' : '')
-        + '</button>';
+    function assign(speed, distance, sendNow) {
+      const next = { speed: snapSpeed(speed), distance: snapDist(distance), rev: current.rev };
+      if (sameState(next, current)) {
+        syncControls();
+        return;
+      }
+      current.speed = next.speed;
+      current.distance = next.distance;
+      dirty = true;
+      syncControls();
+      if (sendNow) flush();
     }
 
-    function moundRow(side) {
-      const selected = current[side + "_preset"];
-      const buttons = cfg.presets.map(function (preset) {
-        const checked = selected === preset.id;
-        const label = levelSpoken(preset.id) + ", " + feetSpoken(preset.feet);
-        const attrs = ' data-action="preset" data-side="' + side + '" data-preset="' + esc(preset.id) + '" aria-label="' + esc(label) + '"';
-        return pill(attrs, preset.id, feetShort(preset.feet), checked);
-      }).join("");
-      const customChecked = selected === "custom";
-      const customMeta = customChecked ? feetShort(current[side + "_feet"]) : "";
-      const customAttrs = ' data-action="custom" data-side="' + side + '" data-preset="custom" aria-label="Custom ' + side + ' distance"';
-      return buttons + pill(customAttrs, "Custom", customMeta, customChecked);
+    function deltaFor(action, big) {
+      if (action === "speed-down") return big ? -Number(cfg.speed_hold) : -Number(cfg.speed_step);
+      if (action === "speed-up") return big ? Number(cfg.speed_hold) : Number(cfg.speed_step);
+      if (action === "distance-down") return big ? -Number(cfg.distance_hold) : -Number(cfg.distance_step);
+      if (action === "distance-up") return big ? Number(cfg.distance_hold) : Number(cfg.distance_step);
+      return 0;
     }
 
-    function customStepper(side) {
-      if (current[side + "_preset"] !== "custom") return "";
-      const feet = Number(current[side + "_feet"]);
-      const atMin = feet <= Number(cfg.distance_min) + 1e-6;
-      const atMax = feet >= Number(cfg.distance_max) - 1e-6;
-      return '<div class="nudges custom-nudges">'
-        + '<button type="button" class="nudge" data-action="distance-down" data-side="' + side + '" aria-label="Decrease ' + side + ' distance by half a foot"' + (atMin ? " disabled" : "") + '>&minus;</button>'
-        + '<span class="nudge-value">' + esc(feetShort(feet)) + '</span>'
-        + '<button type="button" class="nudge" data-action="distance-up" data-side="' + side + '" aria-label="Increase ' + side + ' distance by half a foot"' + (atMax ? " disabled" : "") + '>+</button>'
-        + '</div>';
+    function applyStep(action, big, sendNow) {
+      const delta = deltaFor(action, big);
+      if (action.indexOf("speed") === 0) assign(Number(current.speed) + delta, current.distance, sendNow);
+      else assign(current.speed, Number(current.distance) + delta, sendNow);
+    }
+
+    function clearHoldTimer() {
+      if (!hold) return;
+      clearTimeout(hold.timer);
+      hold.timer = null;
+    }
+
+    function endHold(applyTap) {
+      if (!hold) return;
+      clearHoldTimer();
+      const fired = hold.fired;
+      const action = hold.action;
+      hold = null;
+      if (applyTap && !fired) applyStep(action, false, true);
+      else if (fired) flush();
+      syncControls();
     }
 
     function paint() {
       const root = document.getElementById("root");
-      const speed = Number(current.speed);
-      const atSlow = speed <= Number(cfg.speed_min);
-      const atFast = speed >= Number(cfg.speed_max);
-      const chips = cfg.speed_chips.map(function (mph) {
-        const checked = speed === Number(mph);
-        const attrs = ' data-action="chip" data-speed="' + mph + '" aria-label="' + mph + ' miles per hour"';
-        return pill(attrs, String(mph), "", checked);
+      const pills = (cfg.presets || []).map(function (preset) {
+        const checked = matchingPreset() && matchingPreset().id === preset.id;
+        const label = preset.id + ", " + preset.speed + " miles per hour at " + feetSpoken(preset.distance);
+        const meta = preset.speed + " mph · " + formatDist(preset.distance) + " ft";
+        return '<button type="button" class="pill" role="radio" data-preset="' + esc(preset.id) + '" aria-checked="' + (checked ? "true" : "false") + '" tabindex="' + (checked ? "0" : "-1") + '" aria-label="' + esc(label) + '">'
+          + '<span class="pill-name">' + esc(preset.id) + '</span>'
+          + '<span class="pill-meta">' + esc(meta) + '</span>'
+          + '</button>';
       }).join("");
       root.innerHTML = ''
         + '<section class="field">'
-        + '<p class="field-label" id="from-label">From</p>'
-        + '<div class="scroller" data-row="from" role="radiogroup" aria-labelledby="from-label">' + moundRow("from") + '</div>'
-        + customStepper("from")
+        + '<p class="field-label" id="preset-label">Select Preset</p>'
+        + '<div class="scroller" role="radiogroup" aria-labelledby="preset-label">' + pills + '</div>'
         + '</section>'
-        + '<div class="swap-wrap"><button type="button" class="swap" data-action="swap" aria-label="Swap from and to distances">Swap distances</button></div>'
+        + '<div class="inputs">'
         + '<section class="field">'
-        + '<p class="field-label" id="to-label">To</p>'
-        + '<div class="scroller" data-row="to" role="radiogroup" aria-labelledby="to-label">' + moundRow("to") + '</div>'
-        + customStepper("to")
-        + '</section>'
+        + '<p class="field-label" id="speed-label">Pitch Velo (mph)</p>'
+        + '<div class="stepper">'
+        + '<button type="button" class="step" data-step="speed-down" aria-label="Decrease pitch velocity by 1 mile per hour. Hold for 5.">&minus;</button>'
+        + '<input class="step-value" data-field="speed" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-labelledby="speed-label" value="' + esc(formatSpeed(current.speed)) + '">'
+        + '<button type="button" class="step" data-step="speed-up" aria-label="Increase pitch velocity by 1 mile per hour. Hold for 5.">+</button>'
+        + '</div></section>'
         + '<section class="field">'
-        + '<div class="label-line">'
-        + '<p class="field-label" id="speed-label">Pitch velo</p>'
-        + '<div class="nudges">'
-        + '<button type="button" class="nudge" data-action="speed-down" aria-label="Decrease pitch speed by 1 mile per hour"' + (atSlow ? " disabled" : "") + '>&minus;</button>'
-        + '<span class="nudge-value">' + speed + ' mph</span>'
-        + '<button type="button" class="nudge" data-action="speed-up" aria-label="Increase pitch speed by 1 mile per hour"' + (atFast ? " disabled" : "") + '>+</button>'
-        + '</div></div>'
-        + '<div class="scroller" data-row="speed" role="radiogroup" aria-labelledby="speed-label">' + chips + '</div>'
-        + '</section>';
+        + '<p class="field-label" id="distance-label">Release Distance (ft)</p>'
+        + '<div class="stepper">'
+        + '<button type="button" class="step" data-step="distance-down" aria-label="Decrease release distance by half a foot. Hold for 5 feet.">&minus;</button>'
+        + '<input class="step-value" data-field="distance" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-labelledby="distance-label" value="' + esc(formatDist(current.distance)) + '">'
+        + '<button type="button" class="step" data-step="distance-up" aria-label="Increase release distance by half a foot. Hold for 5 feet.">+</button>'
+        + '</div></section>'
+        + '</div>';
+      syncControls();
       centerSelected(scrollBehavior);
       requestAnimationFrame(fit);
     }
 
-    function commit(next) {
-      next.rev = ((current && current.rev) || 0) + 1;
-      current = next;
+    function selectPreset(id) {
+      const preset = (cfg.presets || []).find(function (item) { return item.id === id; });
+      if (!preset) return;
+      assign(preset.speed, preset.distance, true);
       scrollBehavior = "smooth";
-      writeStorage(current);
-      paint();
+      centerSelected("smooth");
       scrollBehavior = "auto";
-      send(current);
-    }
-
-    function selectPill(button) {
-      if (!button || button.disabled || !current || !cfg) return;
-      const action = button.dataset.action;
-      const side = button.dataset.side;
-      const next = clone(current);
-      if (action === "preset") {
-        const preset = cfg.presets.find(function (item) { return item.id === button.dataset.preset; });
-        if (!preset) return;
-        next[side + "_preset"] = preset.id;
-        next[side + "_feet"] = preset.feet;
-      } else if (action === "custom") {
-        if (current[side + "_preset"] === "custom") return;
-        next[side + "_preset"] = "custom";
-      } else if (action === "distance-down" || action === "distance-up") {
-        const delta = action === "distance-up" ? Number(cfg.distance_step) : -Number(cfg.distance_step);
-        next[side + "_preset"] = "custom";
-        next[side + "_feet"] = snap(Number(current[side + "_feet"]) + delta);
-      } else if (action === "speed-down" || action === "speed-up") {
-        const delta = action === "speed-up" ? 1 : -1;
-        next.speed = Math.min(Number(cfg.speed_max), Math.max(Number(cfg.speed_min), Number(current.speed) + delta));
-      } else if (action === "chip") {
-        next.speed = Number(button.dataset.speed);
-      } else if (action === "swap") {
-        next.from_preset = current.to_preset;
-        next.from_feet = current.to_feet;
-        next.to_preset = current.from_preset;
-        next.to_feet = current.from_feet;
-      } else {
-        return;
-      }
-      if (sameState(next, current) && action !== "swap") return;
-      commit(next);
     }
 
     function onPointerDown(event) {
+      const step = event.target.closest("[data-step]");
+      if (step) {
+        if (step.disabled || hold) return;
+        event.preventDefault();
+        try { step.setPointerCapture(event.pointerId); } catch (err) { /* capture is optional */ }
+        hold = { action: step.dataset.step, fired: false, pointerId: event.pointerId, timer: null };
+        const tick = function () {
+          if (!hold) return;
+          hold.fired = true;
+          applyStep(hold.action, true, false);
+          hold.timer = setTimeout(tick, HOLD_MS);
+        };
+        hold.timer = setTimeout(tick, HOLD_MS);
+        return;
+      }
       const scroller = event.target.closest(".scroller");
       if (!scroller) { gesture = null; return; }
-      gesture = {
-        x: event.clientX,
-        y: event.clientY,
-        scroll: scroller.scrollLeft,
-        moved: false
-      };
+      gesture = { x: event.clientX, y: event.clientY, scroll: scroller.scrollLeft, moved: false };
     }
 
     function onPointerMove(event) {
       if (!gesture || gesture.moved) return;
-      const dx = Math.abs(event.clientX - gesture.x);
-      const dy = Math.abs(event.clientY - gesture.y);
-      if (dx > 10 || dy > 10) gesture.moved = true;
+      if (Math.abs(event.clientX - gesture.x) > 10 || Math.abs(event.clientY - gesture.y) > 10) gesture.moved = true;
+    }
+
+    function onPointerUp(event) {
+      if (hold && event.pointerId === hold.pointerId) {
+        endHold(true);
+        return;
+      }
+    }
+
+    function onPointerCancel(event) {
+      if (hold && event.pointerId === hold.pointerId) endHold(false);
     }
 
     function onClick(event) {
+      const step = event.target.closest("[data-step]");
+      if (step) {
+        if (event.detail === 0) applyStep(step.dataset.step, false, true);
+        event.preventDefault();
+        return;
+      }
       const scroller = event.target.closest(".scroller");
       const scrolled = gesture && scroller && Math.abs(scroller.scrollLeft - gesture.scroll) > 4;
       if (gesture && (gesture.moved || scrolled)) {
@@ -403,7 +441,8 @@
         return;
       }
       gesture = null;
-      selectPill(event.target.closest("button"));
+      const pill = event.target.closest("[data-preset]");
+      if (pill) selectPreset(pill.dataset.preset);
     }
 
     function onKeyDown(event) {
@@ -424,31 +463,76 @@
       event.preventDefault();
       gesture = null;
       pills[next].focus();
-      selectPill(pills[next]);
+      selectPreset(pills[next].dataset.preset);
+    }
+
+    function commitField(input) {
+      if (!input || !current) return;
+      const raw = String(input.value).replace(/[^0-9.]/g, "");
+      const parsed = parseFloat(raw);
+      if (!isFinite(parsed)) {
+        syncControls();
+        return;
+      }
+      if (input.dataset.field === "speed") assign(parsed, current.distance, true);
+      else assign(current.speed, parsed, true);
+    }
+
+    function onFocusIn(event) {
+      if (event.target.matches && event.target.matches("[data-field]")) {
+        editing = true;
+        const input = event.target;
+        setTimeout(function () { try { input.select(); } catch (err) { /* selection can fail on some phones */ } }, 0);
+      }
+    }
+
+    function onFocusOut(event) {
+      if (event.target.matches && event.target.matches("[data-field]")) {
+        editing = false;
+        commitField(event.target);
+      }
+    }
+
+    function onFieldKey(event) {
+      if (event.target.matches && event.target.matches("[data-field]") && event.key === "Enter") {
+        event.preventDefault();
+        event.target.blur();
+      }
+    }
+
+    function onContextMenu(event) {
+      if (event.target.closest("[data-step]")) event.preventDefault();
     }
 
     function onRender(args) {
       applyTheme(args.theme);
       cfg = args;
       const incoming = args.state;
-      if (!incoming) return;
+      if (!incoming || incoming.speed == null || incoming.distance == null) return;
+      if (hold || editing) return;
       if (!booted) {
         booted = true;
         const stored = readStorage();
         if (stored && !sameState(stored, incoming)) {
-          current = stored;
+          current = { speed: snapSpeed(stored.speed), distance: snapDist(stored.distance), rev: Number(stored.rev) || 0 };
           paint();
-          send(current);
+          dirty = true;
+          flush();
           return;
         }
-        current = clone(stored || incoming);
+        current = {
+          speed: snapSpeed((stored || incoming).speed),
+          distance: snapDist((stored || incoming).distance),
+          rev: Number((stored || incoming).rev) || 0
+        };
         writeStorage(current);
         paint();
         return;
       }
-      if ((Number(incoming.rev) || 0) < ((current && Number(current.rev)) || 0)) return;
-      if (sameState(incoming, current)) return;
-      current = clone(incoming);
+      if ((Number(incoming.rev) || 0) < (Number(current.rev) || 0)) return;
+      const normalized = { speed: snapSpeed(incoming.speed), distance: snapDist(incoming.distance), rev: current.rev };
+      if (sameState(normalized, current)) return;
+      current = { speed: normalized.speed, distance: normalized.distance, rev: Number(incoming.rev) || 0 };
       writeStorage(current);
       paint();
     }
@@ -456,21 +540,22 @@
     const root = document.getElementById("root");
     root.addEventListener("pointerdown", onPointerDown);
     root.addEventListener("pointermove", onPointerMove);
+    root.addEventListener("pointerup", onPointerUp);
+    root.addEventListener("pointercancel", onPointerCancel);
     root.addEventListener("click", onClick);
     root.addEventListener("keydown", onKeyDown);
+    root.addEventListener("focusin", onFocusIn);
+    root.addEventListener("focusout", onFocusOut);
+    root.addEventListener("keydown", onFieldKey);
+    root.addEventListener("contextmenu", onContextMenu);
     window.addEventListener("resize", function () {
       centerSelected("auto");
       fit();
     });
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(function () {
-        centerSelected("auto");
-        fit();
-      });
+      document.fonts.ready.then(function () { centerSelected("auto"); fit(); });
     }
-    if (window.ResizeObserver) {
-      new ResizeObserver(fit).observe(root);
-    }
+    if (window.ResizeObserver) new ResizeObserver(fit).observe(root);
     window.addEventListener("message", function (event) {
       const data = event.data;
       if (!data || data.type !== "streamlit:render") return;

@@ -1,57 +1,82 @@
-"""Tests for mound presets and input clamping. The physics lives in test_utils."""
+"""Tests for the original presets and the stepper clamps. Physics stays in test_utils."""
 
 import unittest
 
+import numpy as np
+
 from ui_state import (
     DEFAULT_STATE,
-    PRESETS,
-    SPEED_CHIPS,
+    DIST_HOLD,
     DIST_MAX,
     DIST_MIN,
+    DIST_STEP,
+    PRESETS,
+    REFERENCES,
+    SPEED_HOLD,
+    SPEED_MAX,
+    SPEED_MIN,
+    SPEED_STEP,
+    bump_distance,
+    bump_speed,
     equivalent_mph,
     format_feet,
     format_mph,
-    mound_label,
+    matching_preset,
     normalize_state,
     selection_errors,
     snap_distance,
-    swapped,
 )
 from utils import calculate_equivalent_speeds, calculate_reaction_time, validate_inputs
-import numpy as np
 
 
-class TestPresets(unittest.TestCase):
-    def test_age_ladder_uses_common_mound_distances(self):
+class TestOriginalPresets(unittest.TestCase):
+    def test_presets_are_the_original_release_points(self):
         self.assertEqual(
             PRESETS,
             (
-                ("8U", 40.0),
-                ("9U", 46.0),
-                ("10U", 46.0),
-                ("11U", 50.0),
-                ("12U", 50.0),
-                ("13U", 54.0),
-                ("14U", 60.5),
-                ("HS", 60.5),
-                ("College", 60.5),
-                ("MLB", 60.5),
+                ("BP", 40, 20.0),
+                ("10U", 50, 42.0),
+                ("12U", 60, 46.0),
+                ("HS", 80, 54.0),
+                ("Pro", 95, 54.0),
             ),
         )
 
-    def test_every_preset_distance_is_accepted_by_the_existing_validator(self):
-        for _name, feet in PRESETS:
-            self.assertEqual(validate_inputs(60, feet), [])
+    def test_chart_references_match_the_original_labels(self):
+        self.assertEqual(
+            REFERENCES,
+            (
+                (20.0, "BP (20ft)"),
+                (42.0, "10U (42ft)"),
+                (46.0, "12U (46ft)"),
+                (54.0, "HS/Pro (54ft)"),
+            ),
+        )
+
+    def test_every_preset_is_accepted_by_the_existing_validator(self):
+        for _name, speed, feet in PRESETS:
+            self.assertEqual(validate_inputs(speed, feet), [])
             self.assertGreaterEqual(feet, DIST_MIN)
             self.assertLessEqual(feet, DIST_MAX)
+            self.assertGreaterEqual(speed, SPEED_MIN)
+            self.assertLessEqual(speed, SPEED_MAX)
 
-    def test_full_distance_is_sixty_feet_six_inches(self):
-        for name in ("14U", "HS", "College", "MLB"):
-            self.assertEqual(dict(PRESETS)[name], 60.5)
-            self.assertEqual(format_feet(dict(PRESETS)[name]), "60 ft 6 in")
+    def test_default_is_the_original_twelve_u_point(self):
+        self.assertEqual(DEFAULT_STATE["speed"], 60)
+        self.assertEqual(DEFAULT_STATE["distance"], 46.0)
+        self.assertEqual(matching_preset(60, 46), "12U")
+        self.assertEqual(selection_errors(DEFAULT_STATE), [])
 
 
-class TestSnapAndNormalize(unittest.TestCase):
+class TestMatchingAndNormalize(unittest.TestCase):
+    def test_each_preset_matches_only_its_own_pair(self):
+        self.assertEqual(matching_preset(40, 20), "BP")
+        self.assertEqual(matching_preset(50, 42), "10U")
+        self.assertEqual(matching_preset(80, 54), "HS")
+        self.assertEqual(matching_preset(95, 54), "Pro")
+        self.assertIsNone(matching_preset(61, 46))
+        self.assertIsNone(matching_preset(80, 54.5))
+
     def test_snap_distance_grid(self):
         self.assertEqual(snap_distance(15), 15.0)
         self.assertEqual(snap_distance(60.5), 60.5)
@@ -63,90 +88,67 @@ class TestSnapAndNormalize(unittest.TestCase):
         self.assertEqual(snap_distance(10), 15.0)
         self.assertEqual(snap_distance(80), 60.5)
 
-    def test_known_preset_wins_over_a_mismatched_distance(self):
-        state = normalize_state(
-            {
-                "speed": 60,
-                "from_preset": "10U",
-                "from_feet": 20,
-                "to_preset": "MLB",
-                "to_feet": 46,
-                "rev": 2,
-            }
-        )
-        self.assertEqual(state["from_feet"], 46.0)
-        self.assertEqual(state["to_feet"], 60.5)
-        self.assertEqual(state["rev"], 2)
-
-    def test_custom_distance_snaps_and_speed_clamps_to_the_old_slider_bounds(self):
-        low = normalize_state(
-            {
-                "speed": 5,
-                "from_preset": "custom",
-                "from_feet": 46.2,
-                "to_preset": "custom",
-                "to_feet": 70,
-                "rev": 1,
-            }
-        )
+    def test_normalize_clamps_to_the_old_slider_bounds(self):
+        low = normalize_state({"speed": 5, "distance": 10, "rev": 3})
         self.assertEqual(low["speed"], 20)
-        self.assertEqual(low["from_feet"], 46.0)
-        self.assertEqual(low["to_feet"], 60.5)
+        self.assertEqual(low["distance"], 15.0)
+        self.assertEqual(low["rev"], 3)
 
-        high = normalize_state({"speed": 140, "from_preset": "HS", "to_preset": "8U"})
-        self.assertEqual(high["speed"], 110)
-        self.assertEqual(high["from_preset"], "HS")
-        self.assertEqual(high["to_preset"], "8U")
+        high = normalize_state({"speed": 140, "distance": 80})
+        self.assertEqual(high["speed"], SPEED_MAX)
+        self.assertEqual(high["distance"], DIST_MAX)
 
-    def test_corrupt_payload_falls_back_to_the_default(self):
+    def test_old_from_to_payload_falls_back_to_the_default(self):
         self.assertEqual(normalize_state(None), DEFAULT_STATE)
-        self.assertEqual(normalize_state({"from_preset": "10U"}), DEFAULT_STATE)
+        self.assertEqual(normalize_state({"from_feet": 46, "to_feet": 60.5}), DEFAULT_STATE)
         self.assertEqual(normalize_state("nope"), DEFAULT_STATE)
-
-    def test_default_selection_is_valid(self):
-        self.assertEqual(selection_errors(DEFAULT_STATE), [])
-        self.assertEqual(DEFAULT_STATE["speed"], 60)
-        self.assertEqual(DEFAULT_STATE["from_feet"], 46.0)
-        self.assertEqual(DEFAULT_STATE["to_feet"], 60.5)
-
-
-class TestSwapAndFormatting(unittest.TestCase):
-    def test_swap_flips_distances_and_keeps_speed(self):
-        flipped = swapped(DEFAULT_STATE)
-        self.assertEqual(flipped["speed"], 60)
-        self.assertEqual(flipped["from_preset"], "MLB")
-        self.assertEqual(flipped["from_feet"], 60.5)
-        self.assertEqual(flipped["to_preset"], "10U")
-        self.assertEqual(flipped["to_feet"], 46.0)
 
     def test_labels(self):
         self.assertEqual(format_feet(46), "46 ft")
         self.assertEqual(format_feet(46.5), "46.5 ft")
         self.assertEqual(format_feet(60.5), "60 ft 6 in")
         self.assertEqual(format_mph(78.913043478), "78.9")
-        self.assertEqual(mound_label("10U", 46), "10U (46 ft)")
-        self.assertEqual(mound_label("custom", 47.5), "47.5 ft")
-        self.assertEqual(mound_label("MLB", 60.5), "MLB (60 ft 6 in)")
 
-    def test_speed_chips_are_five_mph_steps(self):
-        self.assertEqual(SPEED_CHIPS[0], 40)
-        self.assertEqual(SPEED_CHIPS[-1], 100)
-        self.assertTrue(all(b - a == 5 for a, b in zip(SPEED_CHIPS, SPEED_CHIPS[1:])))
+
+class TestStepper(unittest.TestCase):
+    def test_tap_and_hold_sizes(self):
+        self.assertEqual(SPEED_STEP, 1)
+        self.assertEqual(SPEED_HOLD, 5)
+        self.assertEqual(DIST_STEP, 0.5)
+        self.assertEqual(DIST_HOLD, 5.0)
+
+    def test_speed_tap_is_one_and_hold_is_five(self):
+        self.assertEqual(bump_speed(60, SPEED_STEP), 61)
+        self.assertEqual(bump_speed(60, -SPEED_STEP), 59)
+        self.assertEqual(bump_speed(60, SPEED_HOLD), 65)
+        self.assertEqual(bump_speed(60, -SPEED_HOLD), 55)
+        self.assertEqual(bump_speed(108, SPEED_HOLD), 110)
+        self.assertEqual(bump_speed(22, -SPEED_HOLD), 20)
+
+    def test_distance_tap_is_half_a_foot_and_hold_is_five(self):
+        self.assertEqual(bump_distance(46, DIST_STEP), 46.5)
+        self.assertEqual(bump_distance(46, -DIST_STEP), 45.5)
+        self.assertEqual(bump_distance(46, DIST_HOLD), 51.0)
+        self.assertEqual(bump_distance(46, -DIST_HOLD), 41.0)
+        self.assertEqual(bump_distance(58, DIST_HOLD), 60.5)
+        self.assertEqual(bump_distance(18, -DIST_HOLD), 15.0)
 
 
 class TestEquivalentUsesExistingMath(unittest.TestCase):
     def test_wrapper_matches_utils_and_the_distance_ratio(self):
-        speed, from_feet, to_feet = 60, 46, 60.5
-        reaction = calculate_reaction_time(speed, from_feet)
-        direct = float(
-            calculate_equivalent_speeds(reaction, np.array([to_feet]))[0]
-        )
-        self.assertAlmostEqual(equivalent_mph(speed, from_feet, to_feet), direct)
-        self.assertAlmostEqual(direct, speed * to_feet / from_feet)
-        self.assertAlmostEqual(equivalent_mph(60, 46, 60.5), 78.91304347826087)
+        speed, release, read_at = 60, 46, 54
+        reaction = calculate_reaction_time(speed, release)
+        direct = float(calculate_equivalent_speeds(reaction, np.array([read_at]))[0])
+        self.assertAlmostEqual(equivalent_mph(speed, release, read_at), direct)
+        self.assertAlmostEqual(direct, speed * read_at / release)
 
-    def test_same_mound_returns_the_same_speed(self):
-        self.assertAlmostEqual(equivalent_mph(88, 54, 54), 88)
+    def test_same_release_returns_the_same_speed(self):
+        self.assertAlmostEqual(equivalent_mph(80, 54, 54), 80)
+
+    def test_sixty_at_forty_six_reads_the_original_references(self):
+        self.assertAlmostEqual(equivalent_mph(60, 46, 20), 60 * 20 / 46)
+        self.assertAlmostEqual(equivalent_mph(60, 46, 42), 60 * 42 / 46)
+        self.assertAlmostEqual(equivalent_mph(60, 46, 54), 60 * 54 / 46)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
-"""Selections for the field calculator.
+"""Selections for the calculator.
 
-The reaction-time math stays in utils.py. This module only picks mound
-distances, clamps the inputs those functions already accept, and calls them.
+The original app has two inputs: pitch velocity and release distance.
+A preset fills both at once. The reaction-time math stays in utils.py.
 """
 
 from __future__ import annotations
@@ -12,44 +12,40 @@ import numpy as np
 
 from utils import calculate_equivalent_speeds, calculate_reaction_time, validate_inputs
 
-# Widely used rubber-to-plate distances. Leagues do not all agree, especially
-# at 8U and 11U–12U, so every button shows its feet and Custom is always there.
-# - 8U: 40 ft. Common USSSA and Pony Pinto kid-pitch distance. Some leagues use 46.
-# - 9U, 10U: 46 ft. Little League majors, Pony Mustang, Perfect Game, Cal Ripken.
-# - 11U, 12U: 50 ft. Little League Intermediate (50/70), Pony Bronco, Perfect Game.
-#   Little League majors often stays at 46 ft through 12U.
-# - 13U: 54 ft. Perfect Game and Pony.
-# - 14U, high school (NFHS), college (NCAA), MLB: 60 ft 6 in.
-PRESETS: tuple[tuple[str, float], ...] = (
-    ("8U", 40.0),
-    ("9U", 46.0),
-    ("10U", 46.0),
-    ("11U", 50.0),
-    ("12U", 50.0),
-    ("13U", 54.0),
-    ("14U", 60.5),
-    ("HS", 60.5),
-    ("College", 60.5),
-    ("MLB", 60.5),
+# Original presets: (name, speed_mph, release_ft).
+# These are release points, not rubber-to-plate distances. Stride shortens
+# the flight, so 10U is 42 ft and high school / pro are 54 ft.
+PRESETS: tuple[tuple[str, int, float], ...] = (
+    ("BP", 40, 20.0),
+    ("10U", 50, 42.0),
+    ("12U", 60, 46.0),
+    ("HS", 80, 54.0),
+    ("Pro", 95, 54.0),
 )
 
-PRESET_FEET = dict(PRESETS)
+# Marks on the original chart, in release feet.
+REFERENCES: tuple[tuple[float, str], ...] = (
+    (20.0, "BP (20ft)"),
+    (42.0, "10U (42ft)"),
+    (46.0, "12U (46ft)"),
+    (54.0, "HS/Pro (54ft)"),
+)
 
 # Same bounds the old sliders enforced.
 SPEED_MIN = 20
 SPEED_MAX = 110
-SPEED_CHIPS = tuple(range(40, 101, 5))
+SPEED_STEP = 1
+SPEED_HOLD = 5
 DIST_MIN = 15.0
 DIST_MAX = 60.5
 DIST_STEP = 0.5
-STORAGE_KEY = "pitchspeedequiv.selection.v1"
+DIST_HOLD = 5.0
+STORAGE_KEY = "pitchspeedequiv.selection.v2"
 
+# The original page opened on 60 mph at 46 ft, which is the 12U preset.
 DEFAULT_STATE = {
     "speed": 60,
-    "from_preset": "10U",
-    "from_feet": 46.0,
-    "to_preset": "MLB",
-    "to_feet": 60.5,
+    "distance": 46.0,
     "rev": 0,
 }
 
@@ -75,58 +71,42 @@ def _snap_speed(speed: float) -> int:
     return min(SPEED_MAX, max(SPEED_MIN, snapped))
 
 
-def _normalize_side(preset, feet, fallback_preset: str, fallback_feet: float):
-    if preset in PRESET_FEET:
-        return preset, PRESET_FEET[preset]
-    try:
-        return "custom", snap_distance(feet)
-    except (TypeError, ValueError):
-        return fallback_preset, fallback_feet
+def bump_speed(speed: float, delta: float) -> int:
+    """Move velocity by a tap (1 mph) or a hold (5 mph), then clamp."""
+    return _snap_speed(_snap_speed(speed) + delta)
+
+
+def bump_distance(feet: float, delta: float) -> float:
+    """Move release distance by a tap (0.5 ft) or a hold (5 ft), then clamp."""
+    return snap_distance(float(feet) + delta)
+
+
+def matching_preset(speed: float, distance: float):
+    """Return the preset name when both values match, otherwise None."""
+    speed = _snap_speed(speed)
+    distance = snap_distance(distance)
+    for name, preset_speed, preset_distance in PRESETS:
+        if speed == preset_speed and abs(distance - preset_distance) < 1e-6:
+            return name
+    return None
 
 
 def normalize_state(raw) -> dict:
-    """Return a complete selection the calculator can trust."""
+    """Return a speed and release distance the calculator can trust."""
     if not isinstance(raw, dict):
         return dict(DEFAULT_STATE)
     try:
         speed = _snap_speed(raw["speed"])
+        distance = snap_distance(raw["distance"])
     except (KeyError, TypeError, ValueError):
         return dict(DEFAULT_STATE)
-    from_preset, from_feet = _normalize_side(
-        raw.get("from_preset"), raw.get("from_feet"), "10U", 46.0
-    )
-    to_preset, to_feet = _normalize_side(
-        raw.get("to_preset"), raw.get("to_feet"), "MLB", 60.5
-    )
     try:
         rev = int(raw.get("rev", 0))
     except (TypeError, ValueError):
         rev = 0
     if rev < 0:
         rev = 0
-    return {
-        "speed": speed,
-        "from_preset": from_preset,
-        "from_feet": from_feet,
-        "to_preset": to_preset,
-        "to_feet": to_feet,
-        "rev": rev,
-    }
-
-
-def swapped(state: dict) -> dict:
-    """Flip the from and to mounds. The radar speed stays with From."""
-    current = normalize_state(state)
-    return normalize_state(
-        {
-            "speed": current["speed"],
-            "from_preset": current["to_preset"],
-            "from_feet": current["to_feet"],
-            "to_preset": current["from_preset"],
-            "to_feet": current["from_feet"],
-            "rev": current["rev"],
-        }
-    )
+    return {"speed": speed, "distance": distance, "rev": rev}
 
 
 def format_feet(feet: float) -> str:
@@ -138,36 +118,16 @@ def format_feet(feet: float) -> str:
     return f"{feet:.1f} ft"
 
 
-def format_feet_spoken(feet: float) -> str:
-    feet = float(feet)
-    if abs(feet - 60.5) < 1e-6:
-        return "60 feet 6 inches"
-    if abs(feet - round(feet)) < 1e-6:
-        return f"{int(round(feet))} feet"
-    return f"{feet:.1f} feet"
-
-
 def format_mph(value: float) -> str:
     return f"{float(value):.1f}"
 
 
-def mound_label(preset: str, feet: float) -> str:
-    distance = format_feet(feet)
-    if preset not in PRESET_FEET:
-        return distance
-    return f"{preset} ({distance})"
-
-
-def equivalent_mph(speed: float, from_feet: float, to_feet: float) -> float:
-    """Speed at to_feet with the same time-to-plate as speed at from_feet."""
-    reaction = calculate_reaction_time(speed, from_feet)
-    speeds = calculate_equivalent_speeds(reaction, np.array([to_feet], dtype=float))
+def equivalent_mph(speed: float, release_feet: float, read_feet: float) -> float:
+    """Speed at read_feet with the same time-to-plate as speed at release_feet."""
+    reaction = calculate_reaction_time(speed, release_feet)
+    speeds = calculate_equivalent_speeds(reaction, np.array([read_feet], dtype=float))
     return float(speeds[0])
 
 
 def selection_errors(state: dict) -> list[str]:
-    errors = list(validate_inputs(state["speed"], state["from_feet"]))
-    for error in validate_inputs(state["speed"], state["to_feet"]):
-        if error.startswith("Distance") and error not in errors:
-            errors.append(error)
-    return errors
+    return list(validate_inputs(state["speed"], state["distance"]))

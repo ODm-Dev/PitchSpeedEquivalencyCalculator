@@ -7,13 +7,15 @@ import os
 import streamlit.components.v1 as components
 
 from ui_state import (
+    DIST_HOLD,
     DIST_MAX,
     DIST_MIN,
     DIST_STEP,
     PRESETS,
-    SPEED_CHIPS,
+    SPEED_HOLD,
     SPEED_MAX,
     SPEED_MIN,
+    SPEED_STEP,
     STORAGE_KEY,
 )
 
@@ -24,16 +26,21 @@ _component = components.declare_component(
 
 
 def field_controls(state: dict):
-    """Render the swipe rows and return the latest selection, or None."""
+    """Render the preset row and the two steppers. Returns the latest selection, or None."""
     return _component(
         state=state,
-        presets=[{"id": preset_id, "feet": feet} for preset_id, feet in PRESETS],
+        presets=[
+            {"id": name, "speed": speed, "distance": distance}
+            for name, speed, distance in PRESETS
+        ],
         speed_min=SPEED_MIN,
         speed_max=SPEED_MAX,
-        speed_chips=list(SPEED_CHIPS),
+        speed_step=SPEED_STEP,
+        speed_hold=SPEED_HOLD,
         distance_min=DIST_MIN,
         distance_max=DIST_MAX,
         distance_step=DIST_STEP,
+        distance_hold=DIST_HOLD,
         storage_key=STORAGE_KEY,
         key="field_controls",
         default=None,
