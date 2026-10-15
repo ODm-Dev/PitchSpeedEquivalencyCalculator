@@ -1,232 +1,200 @@
-import streamlit as st
-import plotly.graph_objects as go
+import html
+
 import numpy as np
-from utils import (calculate_reaction_time, calculate_equivalent_speeds,
-                   generate_distance_range, validate_inputs)
+import plotly.graph_objects as go
+import streamlit as st
 
-# Page configuration
-st.set_page_config(page_title="Pitch Speed Equivalency Calculator",
-                   layout="wide")
+from field_controls import field_controls
+from ui_state import (
+    DEFAULT_STATE,
+    REFERENCES,
+    equivalent_mph,
+    format_mph,
+    normalize_state,
+    selection_errors,
+)
+from utils import (
+    calculate_equivalent_speeds,
+    calculate_reaction_time,
+    generate_distance_range,
+)
 
-# Search Engine Optimization
-st.header = "Pitch Speed Equivalency Calculator"
-st.text = "Calculate the equivalent pitch speeds for a given pitch speed and distance range."
+st.set_page_config(page_title="Pitch Speed Equivalency Calculator", layout="wide")
 
-# Custom CSS
-st.markdown("""
+st.markdown(
+    """
     <style>
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
+    .stApp { max-width: 1200px; margin: 0 auto; }
+    [data-testid="stMainBlockContainer"] { overflow-x: clip; }
+    iframe { max-width: 100%; }
+    [data-testid="stMarkdownContainer"] .readout {
+      margin: 0.15rem 0 0.35rem;
+      font-size: 1.05rem;
+      line-height: 1.45;
+      color: #31333F;
     }
-    .st-emotion-cache-16idsys p {
-        font-size: 1.2rem;
+    [data-testid="stMarkdownContainer"] .readout strong {
+      font-weight: 600;
     }
     </style>
-""",
-            unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
-# Title and description
+if (
+    "selection" not in st.session_state
+    or not isinstance(st.session_state.selection, dict)
+    or "distance" not in st.session_state.selection
+):
+    st.session_state.selection = dict(DEFAULT_STATE)
+else:
+    st.session_state.selection = normalize_state(st.session_state.selection)
+
 st.title("⚾ Pitch Speed Equivalency Calculator")
-st.markdown("""
+st.markdown(
+    """
     Calculate equivalent pitch speeds at different distances that produce the same reaction time.
     Enter your initial speed and distance below to see the equivalency chart.
-""")
+    """
+)
 
-# Initialize session state for speed and distance
-if 'speed' not in st.session_state:
-    st.session_state.speed = 60
-if 'distance' not in st.session_state:
-    st.session_state.distance = 46.0
-if 'force_custom' not in st.session_state:
-    st.session_state.force_custom = False
+reported = field_controls(st.session_state.selection)
+if reported is not None:
+    normalized = normalize_state(reported)
+    if normalized != st.session_state.selection:
+        st.session_state.selection = normalized
+        st.rerun()
 
-# Combined presets: (speed_mph, distance_ft)
-presets = {
-    "BP": (40, 20.0),
-    "10U": (50, 42.0),
-    "12U": (60, 46.0),
-    "HS": (80, 54.0),
-    "Pro": (95, 54.0)
-}
-preset_labels = list(presets.keys())
+selection = st.session_state.selection
+errors = selection_errors(selection)
+for error in errors:
+    st.error(error)
 
-
-# Callback to apply preset when dropdown changes
-def on_preset_change():
-    selection = st.session_state.preset_selector
-    if selection != "Custom":
-        label = selection.split(" (")[0]
-        if label in presets:
-            st.session_state.speed, st.session_state.distance = presets[label]
-
-
-# Check if current values match any preset
-def get_matching_preset_index():
-    if st.session_state.force_custom:
-        return 0
-    for i, label in enumerate(preset_labels):
-        preset_speed, preset_dist = presets[label]
-        if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
-            return i + 1
-    return 0
-
-
-# Preset selector
-preset_options = ["Custom"] + [
-    f"{label} ({speed} mph @ {dist} ft)"
-    for label, (speed, dist) in presets.items()
-]
-
-current_index = get_matching_preset_index()
-if st.session_state.force_custom:
-    st.session_state.force_custom = False
-preset_selection = st.selectbox(
-    "Select Preset",
-    options=preset_options,
-    index=current_index,
-    key="preset_selector",
-    on_change=on_preset_change,
-    help="Select a common age group preset or use Custom")
-
-# Input form
-col1, col2 = st.columns(2)
-with col1:
-    speed = st.slider("Pitch Velo (mph)",
-                      min_value=20,
-                      max_value=110,
-                      value=int(st.session_state.speed),
-                      step=1,
-                      help="Pitch speed in miles per hour")
-    if speed != st.session_state.speed:
-        st.session_state.speed = speed
-        if get_matching_preset_index() == 0:
-            st.session_state.force_custom = True
-            st.rerun()
-
-with col2:
-    distance = st.slider(
-        "Release Distance (ft)",
-        min_value=15.0,
-        max_value=60.5,
-        value=float(st.session_state.distance),
-        step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)")
-    if distance != st.session_state.distance:
-        st.session_state.distance = distance
-        if get_matching_preset_index() == 0:
-            st.session_state.force_custom = True
-            st.rerun()
-
-# Validate inputs
-errors = validate_inputs(speed, distance)
-if errors:
-    for error in errors:
-        st.error(error)
-else:
-    # Calculate initial reaction time
+if not errors:
+    speed = selection["speed"]
+    distance = selection["distance"]
     reaction_time = calculate_reaction_time(speed, distance)
-
-    # Generate distance range and calculate equivalent speeds
     distances = generate_distance_range()
     equiv_speeds = calculate_equivalent_speeds(reaction_time, distances)
 
-    # Create interactive chart
     fig = go.Figure()
-
-    # Add equivalent speed line
     fig.add_trace(
-        go.Scatter(x=distances,
-                   y=equiv_speeds,
-                   mode='lines',
-                   name='Eqv. MPH',
-                   line=dict(color='#1f77b4', width=3)))
-
-    # Add point for initial input
+        go.Scatter(
+            x=distances,
+            y=equiv_speeds,
+            mode="lines",
+            name="Eqv. MPH",
+            line=dict(color="#1f77b4", width=3),
+            hovertemplate="Release %{x} ft<br>%{y:.1f} mph<extra></extra>",
+        )
+    )
     fig.add_trace(
-        go.Scatter(x=[distance],
-                   y=[speed],
-                   mode='markers+text',
-                   name='Your Input',
-                   text=[f"{speed} mph"],
-                   textposition="top center",
-                   marker=dict(color='#ff4b4b',
-                               size=15,
-                               symbol='star',
-                               line=dict(color='black', width=2))))
+        go.Scatter(
+            x=[distance],
+            y=[speed],
+            mode="markers+text",
+            name="Your Input",
+            text=[f"{speed} mph"],
+            textposition="top center",
+            marker=dict(
+                color="#ff4b4b",
+                size=15,
+                symbol="star",
+                line=dict(color="black", width=2),
+            ),
+        )
+    )
 
-    # Add reference distances (matching presets)
-    common_distances = [20, 42, 46, 54]
-    common_distance_names = [
-        "BP (20ft)", "10U (42ft)", "12U (46ft)", "HS/Pro (54ft)"
-    ]
-
-    for dist, name in zip(common_distances, common_distance_names):
-        # Calculate equivalent speed at this distance
-        equiv_speed = calculate_equivalent_speeds(reaction_time,
-                                                  np.array([dist]))[0]
-
-        # Only add reference line if dist does not equal input distance
-        if dist != distance:
-            # Add vertical line with label
-            fig.add_vline(
-                x=dist,
-                line_dash="dot",
-                line_color="gray",
-                opacity=0.5,
-                # annotation_text=f"{name}"
+    for ref_distance, ref_name in REFERENCES:
+        equiv_speed = float(
+            calculate_equivalent_speeds(reaction_time, np.array([ref_distance]))[0]
+        )
+        if abs(ref_distance - distance) < 1e-6:
+            continue
+        fig.add_vline(x=ref_distance, line_dash="dot", line_color="gray", opacity=0.5)
+        fig.add_trace(
+            go.Scatter(
+                x=[ref_distance],
+                y=[equiv_speed],
+                mode="markers+text",
+                name=ref_name,
+                text=[f"{equiv_speed:.1f} mph"],
+                textposition="top center",
+                marker=dict(size=8, symbol="circle"),
+                showlegend=True,
             )
+        )
 
-            # Add point and label
-            fig.add_trace(
-                go.Scatter(x=[dist],
-                           y=[equiv_speed],
-                           mode='markers+text',
-                           name=name,
-                           text=[f"{equiv_speed:.1f} mph"],
-                           textposition="top center",
-                           marker=dict(size=8, symbol='circle'),
-                           showlegend=True))
-
-    # Customize layout
-    fig.update_layout(title=dict(
-        text=f"Equivalent Speeds for {speed} mph at {distance} ft",
-        x=0.5,
-        xanchor='center'),
-                      xaxis_title="Release Distance (feet)",
-                      yaxis_title="Speed (mph)",
-                      hovermode='x unified',
-                      showlegend=False,
-                      legend=dict(yanchor="bottom",
-                                  orientation="h",
-                                  y=-0.30,
-                                  xanchor="center",
-                                  x=0.5),
-                      margin=dict(l=50, r=50, t=80, b=50))
-
-    # Add vertical line for input distance
     fig.add_vline(x=distance, line_dash="dot", line_color="red", opacity=0.5)
+    fig.update_layout(
+        title=dict(
+            text=f"Equivalent Speeds for {speed} mph at {distance} ft",
+            x=0.5,
+            xanchor="center",
+        ),
+        xaxis_title="Release Distance (feet)",
+        yaxis_title="Speed (mph)",
+        hovermode="x unified",
+        showlegend=False,
+        margin=dict(l=50, r=50, t=80, b=50),
+        clickmode="event+select",
+    )
+    fig.update_xaxes(range=[15, 62], dtick=5, gridcolor="lightgray")
+    fig.update_yaxes(gridcolor="lightgray")
 
-    # Configure axes
-    fig.update_xaxes(range=[15, 62], dtick=5, gridcolor='lightgray')
-    fig.update_yaxes(gridcolor='lightgray')
+    event = st.plotly_chart(
+        fig,
+        use_container_width=True,
+        on_select="rerun",
+        selection_mode="points",
+        key="equiv_chart",
+    )
 
-    # Display chart
-    st.plotly_chart(fig, use_container_width=True)
+    tapped = None
+    points = []
+    if event is not None:
+        selection_state = event.get("selection", {}) if hasattr(event, "get") else {}
+        points = selection_state.get("points", []) if hasattr(selection_state, "get") else []
+    if points:
+        point = points[-1]
+        try:
+            tapped = (float(point["x"]), float(point["y"]))
+        except (KeyError, TypeError, ValueError):
+            tapped = None
 
-    # Display reaction time
+    bits = []
+    for ref_distance, ref_name in REFERENCES:
+        if abs(ref_distance - distance) < 1e-6:
+            continue
+        ref_speed = equivalent_mph(speed, distance, ref_distance)
+        label = ref_name.split(" (")[0]
+        bits.append(f"{html.escape(label)} {ref_distance:g} ft: {html.escape(format_mph(ref_speed))} mph")
+    tapped_html = ""
+    if tapped is not None:
+        tapped_html = (
+            f"<strong>At {tapped[0]:g} ft: {html.escape(format_mph(tapped[1]))} mph</strong><br>"
+        )
+    st.markdown(
+        f'<p class="readout">{tapped_html}{" · ".join(bits)}</p>',
+        unsafe_allow_html=True,
+    )
+    st.caption("Tap or drag along the curve to read the speed at that release distance.")
+
     st.info(f"⏱️ Reaction Time: {reaction_time:.3f} seconds")
 
-    # Additional information
-    with st.expander("How to interpret this chart"):
-        st.markdown("""
-            - The blue line shows equivalent speeds at different distances that give the same reaction time
-            - The red star shows your initial input point
-            - Hover over the line to see exact values
-            - Distance increments are in 0.5 feet
-            - Vertical lines mark common distances:
-              - 20ft: BP (Batting Practice)
-              - 42ft: 10U Baseball
-              - 46ft: 12U Baseball
-              - 54ft: HS (High School) / Pro
-        """)
+with st.expander("How to interpret this chart"):
+    st.markdown(
+        """
+        - The blue line shows equivalent speeds at different distances that give the same reaction time
+        - The red star shows your initial input point
+        - Tap or hover the line to read a distance
+        - Distance increments are in 0.5 feet
+        - Vertical lines mark common release distances:
+          - 20ft: BP (Batting Practice)
+          - 42ft: 10U Baseball
+          - 46ft: 12U Baseball
+          - 54ft: HS (High School) / Pro
+        - A preset sets a typical velocity and release distance together
+        - Plus and minus move 1 mph or 0.5 ft. Hold them to move 5
+        """
+    )
