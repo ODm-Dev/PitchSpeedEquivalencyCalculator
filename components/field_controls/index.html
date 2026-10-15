@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pitch speed controls</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #111111;
+      --paper: #ffffff;
+      --line: #111111;
+      --focus: #0057b8;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    #root {
+      position: relative;
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 0 2px 16px;
+      background: var(--paper);
+      -webkit-overflow-scrolling: touch;
+    }
+    .app-head { padding-top: 10px; }
+    .app-head h1 {
+      margin: 0 0 0.15rem;
+      font-size: 1.55rem;
+      line-height: 1.15;
+      font-weight: 800;
+    }
+    .app-head p {
+      margin: 0 0 0.55rem;
+      font-size: 1.05rem;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+    .result-card {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #ffe500;
+      color: var(--ink);
+      border: 4px solid var(--ink);
+      border-radius: 12px;
+      padding: 0.5rem 0.7rem 0.65rem;
+      margin: 0 0 0.75rem;
+    }
+    .result-kicker {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .result-hero {
+      margin: 0;
+      line-height: 0.88;
+      white-space: nowrap;
+    }
+    .result-num {
+      font-size: clamp(4.25rem, 18vw, 7.5rem);
+      font-weight: 800;
+      letter-spacing: -0.045em;
+      font-variant-numeric: tabular-nums;
+    }
+    .result-unit {
+      font-size: clamp(1.35rem, 4.5vw, 2rem);
+      font-weight: 800;
+      margin-left: 0.2rem;
+    }
+    .result-detail {
+      margin: 0.25rem 0 0;
+      font-size: 1.125rem;
+      line-height: 1.3;
+      font-weight: 800;
+    }
+    .distance-note {
+      margin: 0.9rem 0 0;
+      font-size: 1rem;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      line-height: 1.2;
+      font-weight: 800;
+      color: var(--ink);
+    }
+    h2 .now {
+      font-weight: 700;
+      font-size: 1.02rem;
+    }
+    .hint {
+      margin: 2px 0 8px;
+      font-size: 1rem;
+      line-height: 1.3;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .presets, .chips {
+      display: grid;
+      gap: 8px;
+    }
+    .presets {
+      grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+    }
+    .chips {
+      grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+      margin-top: 8px;
+    }
+    button {
+      font: inherit;
+      color: var(--ink);
+      background: var(--paper);
+      border: 2px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: rgba(0, 0, 0, 0.15);
+      user-select: none;
+    }
+    button:focus { outline: none; }
+    button:focus-visible {
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+    button.preset {
+      min-height: 58px;
+      min-width: 0;
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+    }
+    button.preset .age {
+      font-size: 1.05rem;
+      font-weight: 800;
+      line-height: 1.1;
+    }
+    button.preset .ft {
+      font-size: 0.95rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    button[aria-pressed="true"] {
+      background: var(--ink);
+      color: #ffffff;
+    }
+    button.step {
+      flex: 0 0 68px;
+      width: 68px;
+      height: 68px;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      padding: 0;
+    }
+    button.chip {
+      min-height: 52px;
+      min-width: 0;
+      padding: 8px 4px;
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+    button:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    button.swap {
+      width: 100%;
+      min-height: 60px;
+      background: var(--ink);
+      color: #ffffff;
+      border-width: 3px;
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+    button.swap:active { background: #333333; }
+    .stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .readout {
+      flex: 1;
+      min-width: 0;
+      text-align: center;
+      color: var(--ink);
+    }
+    .readout-num {
+      display: block;
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+    .readout-unit, .readout-note {
+      display: block;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+    .speed .readout-num { font-size: 3.25rem; }
+    section + section, .swap { margin-top: 14px; }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const SPOKEN_LEVEL = {
+      HS: "High school",
+      College: "College",
+      MLB: "MLB"
+    };
+
+    let cfg = null;
+    let current = null;
+    let booted = false;
+
+    function post(type, extra) {
+      window.parent.postMessage(Object.assign({
+        isStreamlitMessage: true,
+        type: type
+      }, extra), "*");
+    }
+
+    function fit() {
+      let height = 640;
+      try {
+        const main = window.parent.document.querySelector('[data-testid="stMain"]');
+        const iframe = window.frameElement;
+        if (main && iframe) {
+          const top = iframe.getBoundingClientRect().top - main.getBoundingClientRect().top;
+          height = Math.max(480, Math.floor(main.clientHeight - Math.max(0, top) - 4));
+        } else if (window.parent && window.parent.innerHeight) {
+          height = Math.max(480, window.parent.innerHeight - 16);
+        }
+      } catch (err) {
+        height = 640;
+      }
+      post("streamlit:setFrameHeight", { height: height });
+    }
+
+    function esc(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function clone(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    function sameState(a, b) {
+      if (!a || !b) return false;
+      return Number(a.speed) === Number(b.speed)
+        && a.from_preset === b.from_preset
+        && a.to_preset === b.to_preset
+        && Math.abs(Number(a.from_feet) - Number(b.from_feet)) < 0.001
+        && Math.abs(Number(a.to_feet) - Number(b.to_feet)) < 0.001;
+    }
+
+    function readStorage() {
+      try {
+        const raw = localStorage.getItem(cfg.storage_key);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || parsed.speed == null) return null;
+        return parsed;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function writeStorage(state) {
+      try {
+        localStorage.setItem(cfg.storage_key, JSON.stringify(state));
+      } catch (err) {
+        /* Storage can be blocked. The calculator still works for this visit. */
+      }
+    }
+
+    function send(state) {
+      post("streamlit:setComponentValue", { value: state, dataType: "json" });
+    }
+
+    function snap(feet) {
+      const min = Number(cfg.distance_min);
+      const max = Number(cfg.distance_max);
+      const step = Number(cfg.distance_step);
+      let x = Math.min(max, Math.max(min, Number(feet)));
+      const steps = Math.floor((x - min) / step + 0.5 + 1e-8);
+      let snapped = min + steps * step;
+      if (snapped > max) snapped = max;
+      if (snapped < min) snapped = min;
+      return Math.round(snapped * 1000) / 1000;
+    }
+
+    function feetLong(feet) {
+      feet = Number(feet);
+      if (Math.abs(feet - 60.5) < 1e-6) return "60 ft 6 in";
+      if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " ft";
+      return feet.toFixed(1) + " ft";
+    }
+
+    function feetShort(feet) {
+      feet = Number(feet);
+      if (Math.abs(feet - 60.5) < 1e-6) return "60'6\"";
+      return feetLong(feet);
+    }
+
+    function feetSpoken(feet) {
+      feet = Number(feet);
+      if (Math.abs(feet - 60.5) < 1e-6) return "60 feet 6 inches";
+      if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " feet";
+      return feet.toFixed(1) + " feet";
+    }
+
+    function levelSpoken(id) {
+      return SPOKEN_LEVEL[id] || id;
+    }
+
+    function commit(next) {
+      next.rev = ((current && current.rev) || 0) + 1;
+      current = next;
+      writeStorage(current);
+      paint();
+      send(current);
+    }
+
+    function presetButtons(side) {
+      const selected = current[side + "_preset"];
+      let buttons = cfg.presets.map(function (preset) {
+        const pressed = selected === preset.id;
+        const label = levelSpoken(preset.id) + ", " + feetSpoken(preset.feet);
+        return '<button type="button" class="preset" data-action="preset" data-side="' + side + '" data-preset="' + esc(preset.id) + '" aria-pressed="' + (pressed ? "true" : "false") + '" aria-label="' + esc(label) + '"><span class="age">' + esc(preset.id) + '</span><span class="ft">' + esc(feetShort(preset.feet)) + '</span></button>';
+      }).join("");
+      const customPressed = selected === "custom";
+      buttons += '<button type="button" class="preset" data-action="custom" data-side="' + side + '" data-preset="custom" aria-pressed="' + (customPressed ? "true" : "false") + '" aria-label="Custom ' + side + ' distance"><span class="age">Custom</span><span class="ft">Set feet</span></button>';
+      return buttons;
+    }
+
+    function stepper(side) {
+      if (current[side + "_preset"] !== "custom") return "";
+      const feet = Number(current[side + "_feet"]);
+      const min = Number(cfg.distance_min);
+      const max = Number(cfg.distance_max);
+      const step = Number(cfg.distance_step);
+      const atMin = feet <= min + 1e-6;
+      const atMax = feet >= max - 1e-6;
+      const which = side === "from" ? "from" : "to";
+      return '<div class="stepper">'
+        + '<button type="button" class="step" data-action="distance-down" data-side="' + side + '" aria-label="Decrease ' + which + ' distance by half a foot"' + (atMin ? " disabled" : "") + '>&minus;</button>'
+        + '<div class="readout" aria-hidden="true"><span class="readout-num distance-num">' + esc(feetShort(feet)) + '</span><span class="readout-note">half-foot steps</span></div>'
+        + '<button type="button" class="step" data-action="distance-up" data-side="' + side + '" aria-label="Increase ' + which + ' distance by half a foot"' + (atMax ? " disabled" : "") + '>+</button>'
+        + '</div>';
+    }
+
+    function sideSummary(side) {
+      const preset = current[side + "_preset"];
+      const feet = feetShort(current[side + "_feet"]);
+      if (preset === "custom") return "Custom · " + feet;
+      return preset + " · " + feet;
+    }
+
+    function resultMarkup() {
+      const result = (cfg && cfg.result) || {};
+      if (result.error) {
+        return '<div class="result-card" role="alert"><p class="result-detail">' + esc(result.error) + '</p></div>';
+      }
+      return '<div class="result-card" role="status" aria-live="polite" aria-atomic="true">'
+        + '<p class="result-kicker">Equivalent at ' + esc(result.kicker || "") + '</p>'
+        + '<p class="result-hero"><span class="result-num">' + esc(result.mph || "") + '</span><span class="result-unit">mph</span></p>'
+        + '<p class="result-detail">' + esc(result.detail || "") + '</p>'
+        + '</div>';
+    }
+
+    function paint() {
+      const root = document.getElementById("root");
+      const scroll = root.scrollTop;
+      const speed = Number(current.speed);
+      const atSlow = speed <= Number(cfg.speed_min);
+      const atFast = speed >= Number(cfg.speed_max);
+      const chips = cfg.speed_chips.map(function (mph) {
+        const pressed = speed === Number(mph);
+        return '<button type="button" class="chip" data-action="chip" data-speed="' + mph + '" aria-pressed="' + (pressed ? "true" : "false") + '" aria-label="' + mph + ' miles per hour">' + mph + '</button>';
+      }).join("");
+      root.innerHTML = ''
+        + '<div class="app-head"><h1>Pitch speed equivalent</h1><p>Same batter reaction time at a different mound.</p></div>'
+        + resultMarkup()
+        + '<section class="from" aria-labelledby="from-label">'
+        + '<h2 id="from-label">From <span class="now">' + esc(sideSummary("from")) + '</span></h2>'
+        + '<p class="hint">Mound where the pitch was thrown</p>'
+        + '<div class="presets" role="group" aria-label="From mound distance">' + presetButtons("from") + '</div>'
+        + stepper("from")
+        + '</section>'
+        + '<section class="speed" aria-labelledby="speed-label">'
+        + '<h2 id="speed-label">Radar speed</h2>'
+        + '<p class="hint">Speed at the from mound. Plus and minus move 1 mph.</p>'
+        + '<div class="stepper">'
+        + '<button type="button" class="step" data-action="speed-down" aria-label="Decrease pitch speed by 1 mile per hour"' + (atSlow ? " disabled" : "") + '>&minus;</button>'
+        + '<div class="readout" aria-hidden="true"><span class="readout-num">' + speed + '</span><span class="readout-unit">mph</span></div>'
+        + '<button type="button" class="step" data-action="speed-up" aria-label="Increase pitch speed by 1 mile per hour"' + (atFast ? " disabled" : "") + '>+</button>'
+        + '</div>'
+        + '<div class="chips" role="group" aria-label="Pitch speed in 5 mile per hour steps">' + chips + '</div>'
+        + '</section>'
+        + '<button type="button" class="swap" data-action="swap" aria-label="Swap from and to distances">Swap distances</button>'
+        + '<section class="to" aria-labelledby="to-label">'
+        + '<h2 id="to-label">To <span class="now">' + esc(sideSummary("to")) + '</span></h2>'
+        + '<p class="hint">Mound you want the equivalent for</p>'
+        + '<div class="presets" role="group" aria-label="To mound distance">' + presetButtons("to") + '</div>'
+        + stepper("to")
+        + '</section>'
+        + '<p class="distance-note">Button distances: 8U 40 ft; 9U and 10U 46 ft; 11U and 12U 50 ft; 13U 54 ft; 14U, high school, college, and MLB 60 ft 6 in. Little League majors often stays at 46 ft through 12U. Use Custom if yours differs.</p>';
+      root.scrollTop = scroll;
+      requestAnimationFrame(fit);
+    }
+
+    function onClick(event) {
+      const button = event.target.closest("button");
+      if (!button || button.disabled || !current || !cfg) return;
+      const action = button.dataset.action;
+      const side = button.dataset.side;
+      const next = clone(current);
+      if (action === "preset") {
+        const preset = cfg.presets.find(function (item) { return item.id === button.dataset.preset; });
+        if (!preset) return;
+        next[side + "_preset"] = preset.id;
+        next[side + "_feet"] = preset.feet;
+      } else if (action === "custom") {
+        if (current[side + "_preset"] === "custom") return;
+        next[side + "_preset"] = "custom";
+      } else if (action === "distance-down" || action === "distance-up") {
+        const delta = action === "distance-up" ? Number(cfg.distance_step) : -Number(cfg.distance_step);
+        next[side + "_preset"] = "custom";
+        next[side + "_feet"] = snap(Number(current[side + "_feet"]) + delta);
+      } else if (action === "speed-down" || action === "speed-up") {
+        const delta = action === "speed-up" ? 1 : -1;
+        next.speed = Math.min(Number(cfg.speed_max), Math.max(Number(cfg.speed_min), Number(current.speed) + delta));
+      } else if (action === "chip") {
+        next.speed = Number(button.dataset.speed);
+      } else if (action === "swap") {
+        // Flip mounds only. Speed stays the radar reading on the new From side.
+        next.from_preset = current.to_preset;
+        next.from_feet = current.to_feet;
+        next.to_preset = current.from_preset;
+        next.to_feet = current.from_feet;
+      } else {
+        return;
+      }
+      if (sameState(next, current) && action !== "swap") return;
+      commit(next);
+    }
+
+    function onRender(args) {
+      cfg = args;
+      const incoming = args.state;
+      if (!incoming) return;
+      if (!booted) {
+        booted = true;
+        const stored = readStorage();
+        if (stored && !sameState(stored, incoming)) {
+          current = stored;
+          paint();
+          send(current);
+          return;
+        }
+        current = clone(stored || incoming);
+        writeStorage(current);
+        paint();
+        return;
+      }
+      if ((incoming.rev || 0) < ((current && current.rev) || 0)) return;
+      if (sameState(incoming, current)) {
+        const card = document.querySelector(".result-card");
+        if (card) card.outerHTML = resultMarkup();
+        return;
+      }
+      current = clone(incoming);
+      writeStorage(current);
+      paint();
+    }
+
+    document.getElementById("root").addEventListener("click", onClick);
+    window.addEventListener("resize", fit);
+    try {
+      window.parent.addEventListener("resize", fit);
+    } catch (err) {
+      /* Parent access can fail if the frame is locked down. */
+    }
+    window.addEventListener("message", function (event) {
+      const data = event.data;
+      if (!data || data.type !== "streamlit:render") return;
+      onRender(data.args || {});
+    });
+    post("streamlit:componentReady", { apiVersion: 1 });
+  </script>
+</body>
+</html>

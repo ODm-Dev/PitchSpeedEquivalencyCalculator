@@ -1,232 +1,212 @@
-import streamlit as st
-import plotly.graph_objects as go
 import numpy as np
-from utils import (calculate_reaction_time, calculate_equivalent_speeds,
-                   generate_distance_range, validate_inputs)
+import plotly.graph_objects as go
+import streamlit as st
 
-# Page configuration
-st.set_page_config(page_title="Pitch Speed Equivalency Calculator",
-                   layout="wide")
+from field_controls import field_controls
+from ui_state import (
+    DEFAULT_STATE,
+    equivalent_mph,
+    format_feet,
+    format_mph,
+    mound_label,
+    normalize_state,
+    selection_errors,
+)
+from utils import (
+    calculate_equivalent_speeds,
+    calculate_reaction_time,
+    generate_distance_range,
+)
 
-# Search Engine Optimization
-st.header = "Pitch Speed Equivalency Calculator"
-st.text = "Calculate the equivalent pitch speeds for a given pitch speed and distance range."
+st.set_page_config(
+    page_title="Pitch Speed Equivalency Calculator",
+    layout="centered",
+    initial_sidebar_state="collapsed",
+)
 
-# Custom CSS
-st.markdown("""
+st.markdown(
+    """
     <style>
-    .stApp {
-        max-width: 1200px;
-        margin: 0 auto;
+    :root { color-scheme: light; }
+    html, body, .stApp, [data-testid="stAppViewContainer"],
+    [data-testid="stMain"], section.main, .block-container {
+      background: #ffffff !important;
+      color: #111111 !important;
+      max-width: 100% !important;
     }
-    .st-emotion-cache-16idsys p {
-        font-size: 1.2rem;
+    html, body, [data-testid="stAppViewContainer"] {
+      overflow-x: hidden !important;
+    }
+    header[data-testid="stHeader"], footer, [data-testid="stToolbar"],
+    #MainMenu { display: none !important; }
+    [data-testid="stMain"] .block-container {
+      max-width: 720px !important;
+      padding-top: 0.75rem !important;
+      padding-bottom: 1.5rem !important;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+    .stApp, .stMarkdown, .stMarkdown p, .stMarkdown h1, .stMarkdown li {
+      color: #111111 !important;
+    }
+    iframe { max-width: 100% !important; }
+    [data-testid="stPlotlyChart"],
+    [data-testid="stPlotlyChart"] > div,
+    .js-plotly-plot, .plot-container {
+      max-width: 100% !important;
+    }
+    [data-testid="stExpander"] details {
+      border: 2px solid #111111 !important;
+      border-radius: 10px !important;
+      background: #ffffff !important;
+    }
+    [data-testid="stExpander"] summary, [data-testid="stExpander"] p,
+    [data-testid="stExpander"] li {
+      color: #111111 !important;
+      font-size: 1rem !important;
     }
     </style>
-""",
-            unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
 
-# Title and description
-st.title("⚾ Pitch Speed Equivalency Calculator")
-st.markdown("""
-    Calculate equivalent pitch speeds at different distances that produce the same reaction time.
-    Enter your initial speed and distance below to see the equivalency chart.
-""")
-
-# Initialize session state for speed and distance
-if 'speed' not in st.session_state:
-    st.session_state.speed = 60
-if 'distance' not in st.session_state:
-    st.session_state.distance = 46.0
-if 'force_custom' not in st.session_state:
-    st.session_state.force_custom = False
-
-# Combined presets: (speed_mph, distance_ft)
-presets = {
-    "BP": (40, 20.0),
-    "10U": (50, 42.0),
-    "12U": (60, 46.0),
-    "HS": (80, 54.0),
-    "Pro": (95, 54.0)
-}
-preset_labels = list(presets.keys())
+if "selection" not in st.session_state:
+    st.session_state.selection = dict(DEFAULT_STATE)
 
 
-# Callback to apply preset when dropdown changes
-def on_preset_change():
-    selection = st.session_state.preset_selector
-    if selection != "Custom":
-        label = selection.split(" (")[0]
-        if label in presets:
-            st.session_state.speed, st.session_state.distance = presets[label]
+def build_result(selection):
+    """Hero copy for the current mounds. The number comes from utils.py."""
+    errors = selection_errors(selection)
+    if errors:
+        return {"error": " ".join(errors)}, None
+    speed = selection["speed"]
+    from_feet = selection["from_feet"]
+    to_feet = selection["to_feet"]
+    reaction_time = calculate_reaction_time(speed, from_feet)
+    equivalent = equivalent_mph(speed, from_feet, to_feet)
+    detail = (
+        f"{speed} mph from {mound_label(selection['from_preset'], from_feet)}"
+        f" · {reaction_time:.3f} seconds to the plate"
+    )
+    return {
+        "kicker": format_feet(to_feet),
+        "mph": format_mph(equivalent),
+        "detail": detail,
+    }, reaction_time
 
 
-# Check if current values match any preset
-def get_matching_preset_index():
-    if st.session_state.force_custom:
-        return 0
-    for i, label in enumerate(preset_labels):
-        preset_speed, preset_dist = presets[label]
-        if st.session_state.speed == preset_speed and st.session_state.distance == preset_dist:
-            return i + 1
-    return 0
+result, reaction_time = build_result(st.session_state.selection)
+reported = field_controls(st.session_state.selection, result)
+if reported is not None:
+    normalized = normalize_state(reported)
+    if normalized != st.session_state.selection:
+        st.session_state.selection = normalized
+        st.rerun()
 
-
-# Preset selector
-preset_options = ["Custom"] + [
-    f"{label} ({speed} mph @ {dist} ft)"
-    for label, (speed, dist) in presets.items()
-]
-
-current_index = get_matching_preset_index()
-if st.session_state.force_custom:
-    st.session_state.force_custom = False
-preset_selection = st.selectbox(
-    "Select Preset",
-    options=preset_options,
-    index=current_index,
-    key="preset_selector",
-    on_change=on_preset_change,
-    help="Select a common age group preset or use Custom")
-
-# Input form
-col1, col2 = st.columns(2)
-with col1:
-    speed = st.slider("Pitch Velo (mph)",
-                      min_value=20,
-                      max_value=110,
-                      value=int(st.session_state.speed),
-                      step=1,
-                      help="Pitch speed in miles per hour")
-    if speed != st.session_state.speed:
-        st.session_state.speed = speed
-        if get_matching_preset_index() == 0:
-            st.session_state.force_custom = True
-            st.rerun()
-
-with col2:
-    distance = st.slider(
-        "Release Distance (ft)",
-        min_value=15.0,
-        max_value=60.5,
-        value=float(st.session_state.distance),
-        step=0.5,
-        help="Enter the distance from pitcher to batter (15-60.5 feet)")
-    if distance != st.session_state.distance:
-        st.session_state.distance = distance
-        if get_matching_preset_index() == 0:
-            st.session_state.force_custom = True
-            st.rerun()
-
-# Validate inputs
-errors = validate_inputs(speed, distance)
+selection = st.session_state.selection
+speed = selection["speed"]
+from_feet = selection["from_feet"]
+to_feet = selection["to_feet"]
+errors = selection_errors(selection)
 if errors:
     for error in errors:
         st.error(error)
-else:
-    # Calculate initial reaction time
-    reaction_time = calculate_reaction_time(speed, distance)
 
-    # Generate distance range and calculate equivalent speeds
+if not errors:
     distances = generate_distance_range()
     equiv_speeds = calculate_equivalent_speeds(reaction_time, distances)
+    to_on_curve = float(
+        calculate_equivalent_speeds(reaction_time, np.array([to_feet]))[0]
+    )
 
-    # Create interactive chart
     fig = go.Figure()
-
-    # Add equivalent speed line
     fig.add_trace(
-        go.Scatter(x=distances,
-                   y=equiv_speeds,
-                   mode='lines',
-                   name='Eqv. MPH',
-                   line=dict(color='#1f77b4', width=3)))
-
-    # Add point for initial input
+        go.Scatter(
+            x=distances,
+            y=equiv_speeds,
+            mode="lines",
+            name="Equivalent speed",
+            line=dict(color="#0b3a82", width=3),
+            hovertemplate="%{x:.1f} ft<br>%{y:.1f} mph<extra></extra>",
+        )
+    )
     fig.add_trace(
-        go.Scatter(x=[distance],
-                   y=[speed],
-                   mode='markers+text',
-                   name='Your Input',
-                   text=[f"{speed} mph"],
-                   textposition="top center",
-                   marker=dict(color='#ff4b4b',
-                               size=15,
-                               symbol='star',
-                               line=dict(color='black', width=2))))
-
-    # Add reference distances (matching presets)
-    common_distances = [20, 42, 46, 54]
-    common_distance_names = [
-        "BP (20ft)", "10U (42ft)", "12U (46ft)", "HS/Pro (54ft)"
-    ]
-
-    for dist, name in zip(common_distances, common_distance_names):
-        # Calculate equivalent speed at this distance
-        equiv_speed = calculate_equivalent_speeds(reaction_time,
-                                                  np.array([dist]))[0]
-
-        # Only add reference line if dist does not equal input distance
-        if dist != distance:
-            # Add vertical line with label
-            fig.add_vline(
-                x=dist,
-                line_dash="dot",
-                line_color="gray",
-                opacity=0.5,
-                # annotation_text=f"{name}"
+        go.Scatter(
+            x=[from_feet],
+            y=[speed],
+            mode="markers",
+            name="Radar",
+            marker=dict(
+                color="#b00020",
+                size=16,
+                symbol="star",
+                line=dict(color="#111111", width=1),
+            ),
+        )
+    )
+    if abs(to_feet - from_feet) > 1e-6:
+        fig.add_trace(
+            go.Scatter(
+                x=[to_feet],
+                y=[to_on_curve],
+                mode="markers",
+                name="Target mound",
+                marker=dict(
+                    color="#111111",
+                    size=12,
+                    symbol="diamond",
+                    line=dict(color="#111111", width=1),
+                ),
             )
+        )
+        fig.add_vline(x=to_feet, line_dash="dot", line_color="#111111", opacity=0.45)
 
-            # Add point and label
-            fig.add_trace(
-                go.Scatter(x=[dist],
-                           y=[equiv_speed],
-                           mode='markers+text',
-                           name=name,
-                           text=[f"{equiv_speed:.1f} mph"],
-                           textposition="top center",
-                           marker=dict(size=8, symbol='circle'),
-                           showlegend=True))
+    fig.add_vline(x=from_feet, line_dash="dot", line_color="#b00020", opacity=0.45)
+    fig.update_layout(
+        title=dict(
+            text="Same reaction time at every distance",
+            x=0.0,
+            xanchor="left",
+            font=dict(size=18, color="#111111"),
+        ),
+        paper_bgcolor="#ffffff",
+        plot_bgcolor="#ffffff",
+        font=dict(color="#111111", size=15, family="Arial, Helvetica, sans-serif"),
+        hovermode="x unified",
+        showlegend=False,
+        height=340,
+        margin=dict(l=48, r=12, t=52, b=48),
+        xaxis=dict(
+            title="Release distance (feet)",
+            range=[15, 62],
+            dtick=5,
+            gridcolor="#d5d5d5",
+            fixedrange=True,
+            title_font=dict(size=15, color="#111111"),
+            tickfont=dict(size=13, color="#111111"),
+        ),
+        yaxis=dict(
+            title="Speed (mph)",
+            gridcolor="#d5d5d5",
+            fixedrange=True,
+            title_font=dict(size=15, color="#111111"),
+            tickfont=dict(size=13, color="#111111"),
+        ),
+    )
+    st.plotly_chart(
+        fig,
+        use_container_width=True,
+        config={"displayModeBar": False, "responsive": True, "scrollZoom": False},
+    )
 
-    # Customize layout
-    fig.update_layout(title=dict(
-        text=f"Equivalent Speeds for {speed} mph at {distance} ft",
-        x=0.5,
-        xanchor='center'),
-                      xaxis_title="Release Distance (feet)",
-                      yaxis_title="Speed (mph)",
-                      hovermode='x unified',
-                      showlegend=False,
-                      legend=dict(yanchor="bottom",
-                                  orientation="h",
-                                  y=-0.30,
-                                  xanchor="center",
-                                  x=0.5),
-                      margin=dict(l=50, r=50, t=80, b=50))
-
-    # Add vertical line for input distance
-    fig.add_vline(x=distance, line_dash="dot", line_color="red", opacity=0.5)
-
-    # Configure axes
-    fig.update_xaxes(range=[15, 62], dtick=5, gridcolor='lightgray')
-    fig.update_yaxes(gridcolor='lightgray')
-
-    # Display chart
-    st.plotly_chart(fig, use_container_width=True)
-
-    # Display reaction time
-    st.info(f"⏱️ Reaction Time: {reaction_time:.3f} seconds")
-
-    # Additional information
-    with st.expander("How to interpret this chart"):
-        st.markdown("""
-            - The blue line shows equivalent speeds at different distances that give the same reaction time
-            - The red star shows your initial input point
-            - Hover over the line to see exact values
-            - Distance increments are in 0.5 feet
-            - Vertical lines mark common distances:
-              - 20ft: BP (Batting Practice)
-              - 42ft: 10U Baseball
-              - 46ft: 12U Baseball
-              - 54ft: HS (High School) / Pro
-        """)
+with st.expander("How to read this"):
+    st.markdown(
+        """
+        - The yellow number is the speed at the **To** mound that gives the batter the same time as the radar reading at the **From** mound.
+        - Time to the plate is distance divided by speed. 1 mph is 1.467 feet per second.
+        - The chart is that same speed at every distance from 15 ft to 60 ft 6 in. The star is the radar reading.
+        - **Swap distances** flips the mounds and leaves the radar speed on From.
+        - Your last mounds and speed are remembered on this phone.
+        - 8U is 40 ft. 9U and 10U are 46 ft. 11U and 12U are 50 ft. 13U is 54 ft. 14U, high school, college, and MLB are 60 ft 6 in. Little League majors is often 46 ft through 12U — use Custom when your league differs.
+        """
+    )
