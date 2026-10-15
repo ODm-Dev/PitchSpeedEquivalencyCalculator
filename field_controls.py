@@ -23,11 +23,10 @@ _component = components.declare_component(
 )
 
 
-def field_controls(state: dict, result: dict):
-    """Render the tap targets and return the latest selection, or None."""
+def field_controls(state: dict):
+    """Render the swipe rows and return the latest selection, or None."""
     return _component(
         state=state,
-        result=result,
         presets=[{"id": preset_id, "feet": feet} for preset_id, feet in PRESETS],
         speed_min=SPEED_MIN,
         speed_max=SPEED_MAX,

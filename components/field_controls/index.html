@@ -7,263 +7,147 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #111111;
-      --paper: #ffffff;
-      --line: #111111;
-      --focus: #0057b8;
+      --primary: #ff4b4b;
+      --secondary: #f0f2f6;
+      --text: #31333f;
+      --muted: rgba(49, 51, 63, 0.6);
+      --bg: #ffffff;
     }
     * { box-sizing: border-box; }
     html, body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      overflow: hidden;
-      background: var(--paper);
-      color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Source Sans Pro", "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
     }
-    #root {
-      position: relative;
-      height: 100%;
-      overflow-x: hidden;
-      overflow-y: auto;
-      padding: 0 2px 16px;
-      background: var(--paper);
-      -webkit-overflow-scrolling: touch;
-    }
-    .app-head { padding-top: 10px; }
-    .app-head h1 {
-      margin: 0 0 0.15rem;
-      font-size: 1.55rem;
-      line-height: 1.15;
-      font-weight: 800;
-    }
-    .app-head p {
-      margin: 0 0 0.55rem;
-      font-size: 1.05rem;
-      line-height: 1.3;
-      font-weight: 700;
-    }
-    .result-card {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      background: #ffe500;
-      color: var(--ink);
-      border: 4px solid var(--ink);
-      border-radius: 12px;
-      padding: 0.5rem 0.7rem 0.65rem;
-      margin: 0 0 0.75rem;
-    }
-    .result-kicker {
-      margin: 0;
-      font-size: 1rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-    }
-    .result-hero {
-      margin: 0;
-      line-height: 0.88;
-      white-space: nowrap;
-    }
-    .result-num {
-      font-size: clamp(4.25rem, 18vw, 7.5rem);
-      font-weight: 800;
-      letter-spacing: -0.045em;
-      font-variant-numeric: tabular-nums;
-    }
-    .result-unit {
-      font-size: clamp(1.35rem, 4.5vw, 2rem);
-      font-weight: 800;
-      margin-left: 0.2rem;
-    }
-    .result-detail {
-      margin: 0.25rem 0 0;
-      font-size: 1.125rem;
-      line-height: 1.3;
-      font-weight: 800;
-    }
-    .distance-note {
-      margin: 0.9rem 0 0;
-      font-size: 1rem;
-      line-height: 1.35;
-      font-weight: 700;
-    }
-    h2 {
-      margin: 0;
-      font-size: 1.2rem;
-      line-height: 1.2;
-      font-weight: 800;
-      color: var(--ink);
-    }
-    h2 .now {
-      font-weight: 700;
-      font-size: 1.02rem;
-    }
-    .hint {
-      margin: 2px 0 8px;
-      font-size: 1rem;
-      line-height: 1.3;
-      font-weight: 600;
-      color: var(--ink);
-    }
-    .presets, .chips {
-      display: grid;
-      gap: 8px;
-    }
-    .presets {
-      grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
-    }
-    .chips {
-      grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
-      margin-top: 8px;
-    }
-    button {
-      font: inherit;
-      color: var(--ink);
-      background: var(--paper);
-      border: 2px solid var(--line);
-      border-radius: 10px;
-      cursor: pointer;
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: rgba(0, 0, 0, 0.15);
-      user-select: none;
-    }
-    button:focus { outline: none; }
-    button:focus-visible {
-      outline: 3px solid var(--focus);
-      outline-offset: 2px;
-    }
-    button.preset {
-      min-height: 58px;
-      min-width: 0;
-      padding: 6px 4px;
+    #root { overflow: hidden; }
+    .field { margin: 0 0 0.4rem; }
+    .label-line {
       display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
-      gap: 1px;
-    }
-    button.preset .age {
-      font-size: 1.05rem;
-      font-weight: 800;
-      line-height: 1.1;
-    }
-    button.preset .ft {
-      font-size: 0.95rem;
-      font-weight: 700;
-      line-height: 1.1;
-    }
-    button[aria-pressed="true"] {
-      background: var(--ink);
-      color: #ffffff;
-    }
-    button.step {
-      flex: 0 0 68px;
-      width: 68px;
-      height: 68px;
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1;
-      padding: 0;
-    }
-    button.chip {
-      min-height: 52px;
+      justify-content: space-between;
+      gap: 8px;
       min-width: 0;
-      padding: 8px 4px;
-      font-size: 1.15rem;
-      font-weight: 800;
     }
-    button:disabled {
-      opacity: 0.35;
-      cursor: default;
+    .field-label {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.6;
+      color: var(--text);
     }
-    button.swap {
+    .scroller {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       width: 100%;
-      min-height: 60px;
-      background: var(--ink);
-      color: #ffffff;
-      border-width: 3px;
-      font-size: 1.2rem;
-      font-weight: 800;
+      max-width: 100%;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      scroll-padding-inline: 50%;
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-x;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding: 1px max(12px, calc(50% - 72px)) 3px;
     }
-    button.swap:active { background: #333333; }
-    .stepper {
+    .scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    .pill {
+      flex: 0 0 auto;
+      scroll-snap-align: center;
+      min-height: 44px;
+      padding: 0 14px;
+      border: none;
+      border-radius: 999px;
+      background: var(--secondary);
+      color: var(--text);
+      font: inherit;
+      font-size: 15px;
+      line-height: 1;
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pill-name { font-weight: 600; }
+    .pill-meta {
+      margin-left: 0.4rem;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--muted);
+    }
+    .pill[aria-checked="true"] {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .pill[aria-checked="true"] .pill-meta { color: rgba(255, 255, 255, 0.92); }
+    .pill:focus { outline: none; }
+    .pill:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+    .nudges {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-top: 8px;
+      flex: 0 0 auto;
     }
-    .readout {
-      flex: 1;
-      min-width: 0;
-      text-align: center;
-      color: var(--ink);
-    }
-    .readout-num {
-      display: block;
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1;
-      letter-spacing: -0.03em;
-      font-variant-numeric: tabular-nums;
-    }
-    .readout-unit, .readout-note {
-      display: block;
-      font-size: 1rem;
-      font-weight: 700;
-    }
-    .speed .readout-num { font-size: 3.25rem; }
-    section + section, .swap { margin-top: 14px; }
-    .sr-only {
-      position: absolute;
-      width: 1px;
-      height: 1px;
+    .nudge {
+      min-width: 44px;
+      min-height: 44px;
       padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font: inherit;
+      font-size: 1.15rem;
+      line-height: 1;
+      cursor: pointer;
     }
+    .nudge:hover, .nudge:focus-visible { background: var(--secondary); color: var(--text); }
+    .nudge:focus { outline: none; }
+    .nudge:focus-visible { outline: 2px solid var(--primary); outline-offset: -2px; }
+    .nudge:disabled { opacity: 0.35; cursor: default; background: transparent; }
+    .nudge-value {
+      min-width: 4.6rem;
+      text-align: center;
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .custom-nudges { margin: -0.15rem 0 0.15rem; }
+    .swap-wrap { margin: 0 0 0.4rem; }
+    .swap {
+      min-height: 44px;
+      padding: 0.25rem 0.85rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: var(--secondary);
+      color: var(--text);
+      font: inherit;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .swap:focus { outline: none; }
+    .swap:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   </style>
 </head>
 <body>
   <div id="root"></div>
   <script>
-    const SPOKEN_LEVEL = {
-      HS: "High school",
-      College: "College",
-      MLB: "MLB"
-    };
-
+    const SPOKEN_LEVEL = { HS: "High school", College: "College", MLB: "MLB" };
     let cfg = null;
     let current = null;
     let booted = false;
+    let scrollBehavior = "auto";
+    let gesture = null;
 
     function post(type, extra) {
-      window.parent.postMessage(Object.assign({
-        isStreamlitMessage: true,
-        type: type
-      }, extra), "*");
-    }
-
-    function fit() {
-      let height = 640;
-      try {
-        const main = window.parent.document.querySelector('[data-testid="stMain"]');
-        const iframe = window.frameElement;
-        if (main && iframe) {
-          const top = iframe.getBoundingClientRect().top - main.getBoundingClientRect().top;
-          height = Math.max(480, Math.floor(main.clientHeight - Math.max(0, top) - 4));
-        } else if (window.parent && window.parent.innerHeight) {
-          height = Math.max(480, window.parent.innerHeight - 16);
-        }
-      } catch (err) {
-        height = 640;
-      }
-      post("streamlit:setFrameHeight", { height: height });
+      window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, extra), "*");
     }
 
     function esc(value) {
@@ -274,9 +158,7 @@
         .replace(/"/g, "&quot;");
     }
 
-    function clone(value) {
-      return JSON.parse(JSON.stringify(value));
-    }
+    function clone(value) { return JSON.parse(JSON.stringify(value)); }
 
     function sameState(a, b) {
       if (!a || !b) return false;
@@ -287,6 +169,22 @@
         && Math.abs(Number(a.to_feet) - Number(b.to_feet)) < 0.001;
     }
 
+    function applyTheme(theme) {
+      if (!theme) return;
+      const root = document.documentElement;
+      if (theme.primaryColor) root.style.setProperty("--primary", theme.primaryColor);
+      if (theme.secondaryBackgroundColor) root.style.setProperty("--secondary", theme.secondaryBackgroundColor);
+      if (theme.textColor) root.style.setProperty("--text", theme.textColor);
+      if (theme.backgroundColor) {
+        root.style.setProperty("--bg", theme.backgroundColor);
+        document.body.style.background = theme.backgroundColor;
+      }
+      try {
+        const font = getComputedStyle(window.parent.document.body).fontFamily;
+        if (font) document.body.style.fontFamily = font;
+      } catch (err) { /* The frame can still use the fallback font. */ }
+    }
+
     function readStorage() {
       try {
         const raw = localStorage.getItem(cfg.storage_key);
@@ -294,17 +192,12 @@
         const parsed = JSON.parse(raw);
         if (!parsed || typeof parsed !== "object" || parsed.speed == null) return null;
         return parsed;
-      } catch (err) {
-        return null;
-      }
+      } catch (err) { return null; }
     }
 
     function writeStorage(state) {
-      try {
-        localStorage.setItem(cfg.storage_key, JSON.stringify(state));
-      } catch (err) {
-        /* Storage can be blocked. The calculator still works for this visit. */
-      }
+      try { localStorage.setItem(cfg.storage_key, JSON.stringify(state)); }
+      catch (err) { /* The visit still works if storage is blocked. */ }
     }
 
     function send(state) {
@@ -323,17 +216,11 @@
       return Math.round(snapped * 1000) / 1000;
     }
 
-    function feetLong(feet) {
-      feet = Number(feet);
-      if (Math.abs(feet - 60.5) < 1e-6) return "60 ft 6 in";
-      if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " ft";
-      return feet.toFixed(1) + " ft";
-    }
-
     function feetShort(feet) {
       feet = Number(feet);
       if (Math.abs(feet - 60.5) < 1e-6) return "60'6\"";
-      return feetLong(feet);
+      if (Math.abs(feet - Math.round(feet)) < 1e-6) return Math.round(feet) + " ft";
+      return feet.toFixed(1) + " ft";
     }
 
     function feetSpoken(feet) {
@@ -343,108 +230,118 @@
       return feet.toFixed(1) + " feet";
     }
 
-    function levelSpoken(id) {
-      return SPOKEN_LEVEL[id] || id;
+    function levelSpoken(id) { return SPOKEN_LEVEL[id] || id; }
+
+    function fit() {
+      const root = document.getElementById("root");
+      post("streamlit:setFrameHeight", { height: Math.ceil(root.getBoundingClientRect().height) + 2 });
     }
 
-    function commit(next) {
-      next.rev = ((current && current.rev) || 0) + 1;
-      current = next;
-      writeStorage(current);
-      paint();
-      send(current);
+    function centerInScroller(scroller, target, behavior) {
+      if (!scroller || !target) return;
+      const left = target.offsetLeft - (scroller.clientWidth - target.offsetWidth) / 2;
+      if (behavior === "smooth") scroller.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+      else scroller.scrollLeft = Math.max(0, left);
     }
 
-    function presetButtons(side) {
+    function centerSelected(behavior) {
+      document.querySelectorAll(".scroller").forEach(function (scroller) {
+        let target = scroller.querySelector('[aria-checked="true"]');
+        if (!target && scroller.dataset.row === "speed") {
+          const speed = Number(current.speed);
+          let best = null;
+          let bestDiff = Infinity;
+          scroller.querySelectorAll("[data-speed]").forEach(function (el) {
+            const diff = Math.abs(Number(el.dataset.speed) - speed);
+            if (diff < bestDiff) { best = el; bestDiff = diff; }
+          });
+          target = best;
+        }
+        centerInScroller(scroller, target, behavior);
+      });
+    }
+
+    function pill(attrs, name, meta, checked) {
+      const tab = checked ? "0" : "-1";
+      return '<button type="button" class="pill" role="radio" aria-checked="' + (checked ? "true" : "false") + '" tabindex="' + tab + '"' + attrs + '>'
+        + '<span class="pill-name">' + esc(name) + '</span>'
+        + (meta ? '<span class="pill-meta">' + esc(meta) + '</span>' : '')
+        + '</button>';
+    }
+
+    function moundRow(side) {
       const selected = current[side + "_preset"];
-      let buttons = cfg.presets.map(function (preset) {
-        const pressed = selected === preset.id;
+      const buttons = cfg.presets.map(function (preset) {
+        const checked = selected === preset.id;
         const label = levelSpoken(preset.id) + ", " + feetSpoken(preset.feet);
-        return '<button type="button" class="preset" data-action="preset" data-side="' + side + '" data-preset="' + esc(preset.id) + '" aria-pressed="' + (pressed ? "true" : "false") + '" aria-label="' + esc(label) + '"><span class="age">' + esc(preset.id) + '</span><span class="ft">' + esc(feetShort(preset.feet)) + '</span></button>';
+        const attrs = ' data-action="preset" data-side="' + side + '" data-preset="' + esc(preset.id) + '" aria-label="' + esc(label) + '"';
+        return pill(attrs, preset.id, feetShort(preset.feet), checked);
       }).join("");
-      const customPressed = selected === "custom";
-      buttons += '<button type="button" class="preset" data-action="custom" data-side="' + side + '" data-preset="custom" aria-pressed="' + (customPressed ? "true" : "false") + '" aria-label="Custom ' + side + ' distance"><span class="age">Custom</span><span class="ft">Set feet</span></button>';
-      return buttons;
+      const customChecked = selected === "custom";
+      const customMeta = customChecked ? feetShort(current[side + "_feet"]) : "";
+      const customAttrs = ' data-action="custom" data-side="' + side + '" data-preset="custom" aria-label="Custom ' + side + ' distance"';
+      return buttons + pill(customAttrs, "Custom", customMeta, customChecked);
     }
 
-    function stepper(side) {
+    function customStepper(side) {
       if (current[side + "_preset"] !== "custom") return "";
       const feet = Number(current[side + "_feet"]);
-      const min = Number(cfg.distance_min);
-      const max = Number(cfg.distance_max);
-      const step = Number(cfg.distance_step);
-      const atMin = feet <= min + 1e-6;
-      const atMax = feet >= max - 1e-6;
-      const which = side === "from" ? "from" : "to";
-      return '<div class="stepper">'
-        + '<button type="button" class="step" data-action="distance-down" data-side="' + side + '" aria-label="Decrease ' + which + ' distance by half a foot"' + (atMin ? " disabled" : "") + '>&minus;</button>'
-        + '<div class="readout" aria-hidden="true"><span class="readout-num distance-num">' + esc(feetShort(feet)) + '</span><span class="readout-note">half-foot steps</span></div>'
-        + '<button type="button" class="step" data-action="distance-up" data-side="' + side + '" aria-label="Increase ' + which + ' distance by half a foot"' + (atMax ? " disabled" : "") + '>+</button>'
-        + '</div>';
-    }
-
-    function sideSummary(side) {
-      const preset = current[side + "_preset"];
-      const feet = feetShort(current[side + "_feet"]);
-      if (preset === "custom") return "Custom · " + feet;
-      return preset + " · " + feet;
-    }
-
-    function resultMarkup() {
-      const result = (cfg && cfg.result) || {};
-      if (result.error) {
-        return '<div class="result-card" role="alert"><p class="result-detail">' + esc(result.error) + '</p></div>';
-      }
-      return '<div class="result-card" role="status" aria-live="polite" aria-atomic="true">'
-        + '<p class="result-kicker">Equivalent at ' + esc(result.kicker || "") + '</p>'
-        + '<p class="result-hero"><span class="result-num">' + esc(result.mph || "") + '</span><span class="result-unit">mph</span></p>'
-        + '<p class="result-detail">' + esc(result.detail || "") + '</p>'
+      const atMin = feet <= Number(cfg.distance_min) + 1e-6;
+      const atMax = feet >= Number(cfg.distance_max) - 1e-6;
+      return '<div class="nudges custom-nudges">'
+        + '<button type="button" class="nudge" data-action="distance-down" data-side="' + side + '" aria-label="Decrease ' + side + ' distance by half a foot"' + (atMin ? " disabled" : "") + '>&minus;</button>'
+        + '<span class="nudge-value">' + esc(feetShort(feet)) + '</span>'
+        + '<button type="button" class="nudge" data-action="distance-up" data-side="' + side + '" aria-label="Increase ' + side + ' distance by half a foot"' + (atMax ? " disabled" : "") + '>+</button>'
         + '</div>';
     }
 
     function paint() {
       const root = document.getElementById("root");
-      const scroll = root.scrollTop;
       const speed = Number(current.speed);
       const atSlow = speed <= Number(cfg.speed_min);
       const atFast = speed >= Number(cfg.speed_max);
       const chips = cfg.speed_chips.map(function (mph) {
-        const pressed = speed === Number(mph);
-        return '<button type="button" class="chip" data-action="chip" data-speed="' + mph + '" aria-pressed="' + (pressed ? "true" : "false") + '" aria-label="' + mph + ' miles per hour">' + mph + '</button>';
+        const checked = speed === Number(mph);
+        const attrs = ' data-action="chip" data-speed="' + mph + '" aria-label="' + mph + ' miles per hour"';
+        return pill(attrs, String(mph), "", checked);
       }).join("");
       root.innerHTML = ''
-        + '<div class="app-head"><h1>Pitch speed equivalent</h1><p>Same batter reaction time at a different mound.</p></div>'
-        + resultMarkup()
-        + '<section class="from" aria-labelledby="from-label">'
-        + '<h2 id="from-label">From <span class="now">' + esc(sideSummary("from")) + '</span></h2>'
-        + '<p class="hint">Mound where the pitch was thrown</p>'
-        + '<div class="presets" role="group" aria-label="From mound distance">' + presetButtons("from") + '</div>'
-        + stepper("from")
+        + '<section class="field">'
+        + '<p class="field-label" id="from-label">From</p>'
+        + '<div class="scroller" data-row="from" role="radiogroup" aria-labelledby="from-label">' + moundRow("from") + '</div>'
+        + customStepper("from")
         + '</section>'
-        + '<section class="speed" aria-labelledby="speed-label">'
-        + '<h2 id="speed-label">Radar speed</h2>'
-        + '<p class="hint">Speed at the from mound. Plus and minus move 1 mph.</p>'
-        + '<div class="stepper">'
-        + '<button type="button" class="step" data-action="speed-down" aria-label="Decrease pitch speed by 1 mile per hour"' + (atSlow ? " disabled" : "") + '>&minus;</button>'
-        + '<div class="readout" aria-hidden="true"><span class="readout-num">' + speed + '</span><span class="readout-unit">mph</span></div>'
-        + '<button type="button" class="step" data-action="speed-up" aria-label="Increase pitch speed by 1 mile per hour"' + (atFast ? " disabled" : "") + '>+</button>'
-        + '</div>'
-        + '<div class="chips" role="group" aria-label="Pitch speed in 5 mile per hour steps">' + chips + '</div>'
+        + '<div class="swap-wrap"><button type="button" class="swap" data-action="swap" aria-label="Swap from and to distances">Swap distances</button></div>'
+        + '<section class="field">'
+        + '<p class="field-label" id="to-label">To</p>'
+        + '<div class="scroller" data-row="to" role="radiogroup" aria-labelledby="to-label">' + moundRow("to") + '</div>'
+        + customStepper("to")
         + '</section>'
-        + '<button type="button" class="swap" data-action="swap" aria-label="Swap from and to distances">Swap distances</button>'
-        + '<section class="to" aria-labelledby="to-label">'
-        + '<h2 id="to-label">To <span class="now">' + esc(sideSummary("to")) + '</span></h2>'
-        + '<p class="hint">Mound you want the equivalent for</p>'
-        + '<div class="presets" role="group" aria-label="To mound distance">' + presetButtons("to") + '</div>'
-        + stepper("to")
-        + '</section>'
-        + '<p class="distance-note">Button distances: 8U 40 ft; 9U and 10U 46 ft; 11U and 12U 50 ft; 13U 54 ft; 14U, high school, college, and MLB 60 ft 6 in. Little League majors often stays at 46 ft through 12U. Use Custom if yours differs.</p>';
-      root.scrollTop = scroll;
+        + '<section class="field">'
+        + '<div class="label-line">'
+        + '<p class="field-label" id="speed-label">Pitch velo</p>'
+        + '<div class="nudges">'
+        + '<button type="button" class="nudge" data-action="speed-down" aria-label="Decrease pitch speed by 1 mile per hour"' + (atSlow ? " disabled" : "") + '>&minus;</button>'
+        + '<span class="nudge-value">' + speed + ' mph</span>'
+        + '<button type="button" class="nudge" data-action="speed-up" aria-label="Increase pitch speed by 1 mile per hour"' + (atFast ? " disabled" : "") + '>+</button>'
+        + '</div></div>'
+        + '<div class="scroller" data-row="speed" role="radiogroup" aria-labelledby="speed-label">' + chips + '</div>'
+        + '</section>';
+      centerSelected(scrollBehavior);
       requestAnimationFrame(fit);
     }
 
-    function onClick(event) {
-      const button = event.target.closest("button");
+    function commit(next) {
+      next.rev = ((current && current.rev) || 0) + 1;
+      current = next;
+      scrollBehavior = "smooth";
+      writeStorage(current);
+      paint();
+      scrollBehavior = "auto";
+      send(current);
+    }
+
+    function selectPill(button) {
       if (!button || button.disabled || !current || !cfg) return;
       const action = button.dataset.action;
       const side = button.dataset.side;
@@ -467,7 +364,6 @@
       } else if (action === "chip") {
         next.speed = Number(button.dataset.speed);
       } else if (action === "swap") {
-        // Flip mounds only. Speed stays the radar reading on the new From side.
         next.from_preset = current.to_preset;
         next.from_feet = current.to_feet;
         next.to_preset = current.from_preset;
@@ -479,7 +375,60 @@
       commit(next);
     }
 
+    function onPointerDown(event) {
+      const scroller = event.target.closest(".scroller");
+      if (!scroller) { gesture = null; return; }
+      gesture = {
+        x: event.clientX,
+        y: event.clientY,
+        scroll: scroller.scrollLeft,
+        moved: false
+      };
+    }
+
+    function onPointerMove(event) {
+      if (!gesture || gesture.moved) return;
+      const dx = Math.abs(event.clientX - gesture.x);
+      const dy = Math.abs(event.clientY - gesture.y);
+      if (dx > 10 || dy > 10) gesture.moved = true;
+    }
+
+    function onClick(event) {
+      const scroller = event.target.closest(".scroller");
+      const scrolled = gesture && scroller && Math.abs(scroller.scrollLeft - gesture.scroll) > 4;
+      if (gesture && (gesture.moved || scrolled)) {
+        event.preventDefault();
+        event.stopPropagation();
+        gesture = null;
+        return;
+      }
+      gesture = null;
+      selectPill(event.target.closest("button"));
+    }
+
+    function onKeyDown(event) {
+      const scroller = event.target.closest(".scroller");
+      if (!scroller) return;
+      const keys = ["ArrowRight", "ArrowLeft", "Home", "End"];
+      if (keys.indexOf(event.key) === -1) return;
+      const pills = Array.prototype.slice.call(scroller.querySelectorAll("[role='radio']"));
+      if (!pills.length) return;
+      let index = pills.indexOf(document.activeElement);
+      if (index < 0) index = pills.findIndex(function (pill) { return pill.getAttribute("aria-checked") === "true"; });
+      if (index < 0) index = 0;
+      let next = index;
+      if (event.key === "ArrowRight") next = Math.min(pills.length - 1, index + 1);
+      if (event.key === "ArrowLeft") next = Math.max(0, index - 1);
+      if (event.key === "Home") next = 0;
+      if (event.key === "End") next = pills.length - 1;
+      event.preventDefault();
+      gesture = null;
+      pills[next].focus();
+      selectPill(pills[next]);
+    }
+
     function onRender(args) {
+      applyTheme(args.theme);
       cfg = args;
       const incoming = args.state;
       if (!incoming) return;
@@ -497,23 +446,30 @@
         paint();
         return;
       }
-      if ((incoming.rev || 0) < ((current && current.rev) || 0)) return;
-      if (sameState(incoming, current)) {
-        const card = document.querySelector(".result-card");
-        if (card) card.outerHTML = resultMarkup();
-        return;
-      }
+      if ((Number(incoming.rev) || 0) < ((current && Number(current.rev)) || 0)) return;
+      if (sameState(incoming, current)) return;
       current = clone(incoming);
       writeStorage(current);
       paint();
     }
 
-    document.getElementById("root").addEventListener("click", onClick);
-    window.addEventListener("resize", fit);
-    try {
-      window.parent.addEventListener("resize", fit);
-    } catch (err) {
-      /* Parent access can fail if the frame is locked down. */
+    const root = document.getElementById("root");
+    root.addEventListener("pointerdown", onPointerDown);
+    root.addEventListener("pointermove", onPointerMove);
+    root.addEventListener("click", onClick);
+    root.addEventListener("keydown", onKeyDown);
+    window.addEventListener("resize", function () {
+      centerSelected("auto");
+      fit();
+    });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () {
+        centerSelected("auto");
+        fit();
+      });
+    }
+    if (window.ResizeObserver) {
+      new ResizeObserver(fit).observe(root);
     }
     window.addEventListener("message", function (event) {
       const data = event.data;
